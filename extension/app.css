@@ -257,6 +257,7 @@ input[type="search"].input { width: 210px; }
 .runBar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 12px 22px 0;
 }
@@ -978,6 +979,7 @@ body.track1 .trackOpt.active { background: #eef3ff; color: #2f6bd8; }
   align-items: center;
   gap: 8px;
   margin: 8px 0 0;
+  padding: 0 22px;
   flex-wrap: wrap;
 }
 .chip {
@@ -1043,3 +1045,77 @@ body.track1 .trackOpt.active { background: #eef3ff; color: #2f6bd8; }
 .cmpMissing { color: var(--text-3); }
 .cmpEmpty { padding: 48px 20px; text-align: center; color: var(--text-3); font-size: 13px; line-height: 1.8; }
 .cmpHint code { font-size: 11px; }
+
+/* ============================================================
+   矩阵版：矩阵阵列速采
+   - 暗色阵列舞台：并行打开的页面沿弧线排成一排
+   - 每张卡=一个后台商品页（模拟页预览 + SKU + 实时读数）
+   - 批次关闭时整排卡片碎成小颗粒，被风吹散
+   ============================================================ */
+
+.btn.matrixBtn {
+  border: 1px solid #1f8fb8;
+  background: linear-gradient(135deg, #0c3850, #0e4d63);
+  color: #8fe9ff;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(51, 225, 255, 0.06);
+}
+.btn.matrixBtn:hover {
+  color: #e6feff;
+  border-color: #33e1ff;
+  background: linear-gradient(135deg, #0d465e, #106a80);
+  box-shadow: 0 0 16px rgba(51, 225, 255, 0.25);
+}
+.btn.matrixBtn.plus {
+  border-color: #c69a3d;
+  background: linear-gradient(135deg, #4a3515, #5b4417);
+  color: #ffd995;
+  box-shadow: inset 0 0 0 1px rgba(255, 214, 140, 0.06);
+}
+.btn.matrixBtn.plus:hover {
+  color: #fff3d6;
+  border-color: #f0c36a;
+  background: linear-gradient(135deg, #5a4119, #6f531d);
+  box-shadow: 0 0 16px rgba(240, 195, 106, 0.22);
+}
+
+.trackOpt[data-track="matrix"].active {
+  background: #062b38;
+  color: #54e6ff;
+  box-shadow: inset 0 0 0 1px rgba(51, 225, 255, 0.18);
+}
+.trackBadge.matrix {
+  background: #062b38;
+  color: #54e6ff;
+  border-color: #1c7086;
+}
+.topbar:has(.trackBadge.matrix) { border-bottom: 2px solid #1f8fb8; }
+
+
+/* 设置里的矩阵参数 */
+.matrixSetWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 14px;
+  padding: 10px 12px;
+  border: 1px dashed #b9d9e6;
+  border-radius: 8px;
+  background: #f3fbfd;
+}
+.matrixSetHead { margin: 0 0 2px; font-size: 12px; font-weight: 600; color: #0f6b85; }
+.matrixSetTip { margin: 0; font-size: 11.5px; line-height: 1.7; color: #5f7f8f; background: #eaf6fa; border-left: 3px solid #9bd6e8; padding: 6px 9px; border-radius: 4px; }
+.matrixSetWrap .field { margin: 0; }
+.matrixSetWrap .field > span { min-width: 108px; }
+
+/* 矩阵大屏入口（独立窗口） */
+.mxOpenChip {
+  cursor: pointer;
+  font-family: inherit;
+  color: #0f6b85;
+  border-color: #b9e6f2;
+  background: #f0fbff;
+  font-weight: 600;
+}
+.mxOpenChip:hover { border-color: #38b6d6; color: #07576e; }
+

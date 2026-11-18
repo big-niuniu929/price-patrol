@@ -15,6 +15,12 @@ const STORAGE_KEY = 'patrol.db.v2';
 // 基表单独存一个 key：采集/设置等高频写入不会碰它，避免任何一次整库覆盖把 SKU 库冲掉
 const BASE_KEY = 'patrol.base.v1';
 const PRICE_TIMEOUT_MS = 35000;
+// 矩阵速采：一个页面从打开到 content.js 上报结果的最大等待时间（比顺序模式宽一点）
+const MATRIX_TIMEOUT_MS = 45000;
+const MATRIX_MIN_BATCH = 2;
+const MATRIX_MAX_BATCH = 12;
+// 工作台 ↔ 矩阵大屏（独立窗口）的 BroadcastChannel 名称
+const MATRIX_BOARD_CHANNEL = 'patrol-matrix-board-v1';
 const ITEM_URL = (sku) => 'https://item.shop.example.com/' + sku + '.html';
 
 const DEFAULT_SETTINGS = {
@@ -35,9 +41,17 @@ const DEFAULT_SETTINGS = {
   aiApiKey: '',
   aiVerifyMode: 'fallback',
   officialApiUrl: 'http://127.0.0.1:18765',
+  // 矩阵速采（并行开一批页面 → 成排读取 → 批量写入 → 批量关闭）
+  matrixBatch: 6,
+  matrixGapMs: 300,
+  matrixBatchDelay: 1.5,
+  matrixShatter: true,
+  matrixWindowMode: true,
   // 重采时记住的账号/轨道选择
   rerunIdentity: '',
   rerunForeground: null,
+  rerunMode: '',
+  rerunMatrix: false,
   rerunRemember: false
 };
 
@@ -71,6 +85,23 @@ const state = {
   run: null,
   pending: null,
   pendingBuffer: null,
+  // 矩阵速采：state.matrix = { pending: Map<tabId, slot>, ... }
+  matrix: null,
+  // 矩阵大屏独立窗口（BroadcastChannel 驱动）
+  board: {
+    windowId: null,
+    tabId: null,
+    ready: false,
+    readyResolve: null,
+    session: '',
+    heartbeatTimer: null,
+    cards: [],
+    phase: '待命',
+    sub: '',
+    finished: false,
+    finalStats: null,
+    lastBoardHelloAt: 0
+  },
   autoRunMode: false,
   selected: new Set(),
   baseManager: { sheet: '', draft: null },
@@ -145,11 +176,14 @@ const els = {
   purgeBtn: $('purgeBtn'),
   runUtilBtn: $('runUtilBtn'),
   runPlusBtn: $('runPlusBtn'),
+  runMatrixUtilBtn: $('runMatrixUtilBtn'),
+  runMatrixPlusBtn: $('runMatrixPlusBtn'),
   multiRerunBtn: $('multiRerunBtn'),
   selectAllChk: $('selectAllChk'),
   pauseBtn: $('pauseBtn'),
   stopBtn: $('stopBtn'),
   runHint: $('runHint'),
+  mxOpenBtn: $('mxOpenBtn'),
   progressWrap: $('progressWrap'),
   progressText: $('progressText'),
   progressPct: $('progressPct'),
@@ -177,6 +211,11 @@ const els = {
   setDeviationConfirm: $('setDeviationConfirm'),
   setPreviewDelay: $('setPreviewDelay'),
   setPatrolMode: $('setPatrolMode'),
+  setMatrixBatch: $('setMatrixBatch'),
+  setMatrixGap: $('setMatrixGap'),
+  setMatrixDelay: $('setMatrixDelay'),
+  setMatrixShatter: $('setMatrixShatter'),
+  setMatrixWindowMode: $('setMatrixWindowMode'),
   setAiEnabled: $('setAiEnabled'),
   setAiEndpoint: $('setAiEndpoint'),
   setAiModel: $('setAiModel'),
@@ -262,14 +301,19 @@ function logLine(text) {
 const KIND_LABEL = { hand: '到手价', main: '电商平台价', plus: 'PLUS价', manual: '手动', official: '官方API', ai: 'AI识别', unknown: '价格' };
 const kindLabel = (kind) => KIND_LABEL[kind] || '价格';
 
-// ---------------- 双轨切换 / 轨道标识 ----------------
+// ---------------- 轨道切换 / 轨道标识 ----------------
+// 矩阵版：在双轨版两条轨道之外，新增「矩阵③ 阵列速采」——并行开一批页面，成排读取，批量写入。
 const TRACK_INFO = {
-  track1: { key: 'track1', label: '轨道① · 后台标签页', meta: '后台标签页 · 原方式' },
-  track2: { key: 'track2', label: '轨道② · 前台窗口+AI复核', meta: '前台窗口 · AI 复核（截图不保存）' }
+  track1: { key: 'track1', label: '轨道① · 后台标签页', meta: '后台标签页 · 逐个读取' },
+  track2: { key: 'track2', label: '轨道② · 前台窗口+AI复核', meta: '前台窗口 · AI 复核（截图不保存）' },
+  matrix: { key: 'matrix', label: '矩阵③ · 阵列速采', meta: '批量开页 · 成排读取 · 批量写入' }
 };
 
 function currentTrackKey() {
-  return state.db && state.db.settings && state.db.settings.patrolMode === 'background' ? 'track1' : 'track2';
+  const mode = state.db && state.db.settings ? state.db.settings.patrolMode : '';
+  if (mode === 'background') return 'track1';
+  if (mode === 'matrix') return 'matrix';
+  return 'track2';
 }
 
 function applyTrackSelectionUI() {
@@ -277,21 +321,25 @@ function applyTrackSelectionUI() {
   const info = TRACK_INFO[key];
   document.body.classList.toggle('track1', key === 'track1');
   document.body.classList.toggle('track2', key === 'track2');
-  document.title = '【双轨版 · ' + (key === 'track1' ? '轨道①' : '轨道②') + '】电商平台价格巡检工作台';
+  document.body.classList.toggle('matrix', key === 'matrix');
+  document.title = '【矩阵版 · ' + (key === 'track1' ? '轨道①' : key === 'track2' ? '轨道②' : '矩阵③') + '】电商平台价格巡检工作台';
   const badge = document.getElementById('trackBadge');
   if (badge) {
-    badge.textContent = '双轨版 · ' + info.label;
+    badge.textContent = '矩阵版 · ' + info.label;
     badge.classList.toggle('track1', key === 'track1');
     badge.classList.toggle('track2', key === 'track2');
+    badge.classList.toggle('matrix', key === 'matrix');
   }
   const meta = document.getElementById('trackMeta');
   if (meta) meta.textContent = info.meta;
   const tip = document.getElementById('trackInfo');
   if (tip) {
-    tip.textContent = '当前使用： 双轨版 · ' + info.label + '\n扩展ID： ' + chrome.runtime.id + '\n扩展目录： ' + '巡检插件-双轨版\\extension';
+    tip.textContent = '当前使用： 矩阵版 · ' + info.label + '\n扩展ID： ' + chrome.runtime.id + '\n扩展目录： ' + '巡检插件-矩阵版\\extension';
   }
   document.querySelectorAll('.trackOpt').forEach((btn) => btn.classList.toggle('active', btn.dataset.track === key));
-  if (els.setPatrolMode) els.setPatrolMode.value = key === 'track1' ? 'background' : 'foreground';
+  if (els.setPatrolMode) {
+    els.setPatrolMode.value = key === 'track1' ? 'background' : key === 'matrix' ? 'matrix' : 'foreground';
+  }
 }
 
 async function setTrack(key, opts) {
@@ -299,14 +347,14 @@ async function setTrack(key, opts) {
     setToast('巡检进行中，先停止再切换轨道');
     return;
   }
-  const mode = key === 'track1' ? 'background' : 'foreground';
+  const mode = key === 'track1' ? 'background' : key === 'matrix' ? 'matrix' : 'foreground';
   if (state.db.settings.patrolMode === mode) return;
   state.db.settings.patrolMode = mode;
   await saveDb();
   applyTrackSelectionUI();
   renderRunUI();
   if (!(opts && opts.silent)) {
-    setToast('已切换到 ' + (key === 'track1' ? '轨道①（后台标签页）' : '轨道②（前台窗口 + AI 复核）'));
+    setToast('已切换到 ' + (key === 'track1' ? '轨道①（后台标签页）' : key === 'matrix' ? '矩阵③（阵列速采）' : '轨道②（前台窗口 + AI 复核）'));
   }
   logLine('切换采集轨道：' + TRACK_INFO[key].label);
 }
@@ -1590,15 +1638,34 @@ function renderRunUI() {
   const running = state.running;
   els.runUtilBtn.disabled = running;
   els.runPlusBtn.disabled = running;
+  if (els.runMatrixUtilBtn) els.runMatrixUtilBtn.disabled = running;
+  if (els.runMatrixPlusBtn) els.runMatrixPlusBtn.disabled = running;
   els.pauseBtn.disabled = !running;
   els.stopBtn.disabled = !running;
   els.pauseBtn.textContent = state.paused ? '继续' : '暂停';
   if (running) {
-    els.runHint.textContent = '巡检进行中：后台标签页会逐个打开商品页，请保持本页面打开（可暂停/停止）';
+    if (state.run && state.run.matrix) {
+      const m = (state.run && state.run.matrixState) || {};
+      els.runHint.textContent = '矩阵速采进行中：第 ' + ((m.batchIndex || 0) + 1) + '/' + (m.batchCount || 1) +
+        ' 批 · 每批 ' + (m.batchSize || matrixBatchSize()) + ' 个' + (state.run.matrixWindows ? '商品窗口' : '页面') +
+        '并行读取，整批读完后批量写入并关闭（可暂停/停止）';
+    } else {
+      els.runHint.textContent = '巡检进行中：后台标签页会逐个打开商品页，请保持本页面打开（可暂停/停止）';
+    }
   } else {
     const s = state.db.settings;
-    els.runHint.textContent = '每批 ' + (Number(s.batchSize) > 0 ? Number(s.batchSize) + ' 个' : '全部') +
-      ' · 间隔 ' + s.delayMin + '–' + s.delayMax + ' 秒 · 开始前请先登录对应账号';
+    if (currentTrackKey() === 'matrix') {
+      if (matrixUseWindows()) {
+        els.runHint.textContent = '矩阵③ 真实多窗口 · 每批 ' + matrixBatchSize() + ' 个 · 窗口沿弧线排开 · 开页错开 ' +
+          matrixGapMs() + 'ms · 批次间隔 ' + (matrixBatchDelayMs() / 1000) + ' 秒';
+      } else {
+        els.runHint.textContent = '矩阵③ 后台标签页 + 大屏 · 每批 ' + matrixBatchSize() + ' 个 · 开页错开 ' + matrixGapMs() +
+          'ms · 批次间隔 ' + (matrixBatchDelayMs() / 1000) + ' 秒';
+      }
+    } else {
+      els.runHint.textContent = '每批 ' + (Number(s.batchSize) > 0 ? Number(s.batchSize) + ' 个' : '全部') +
+        ' · 间隔 ' + s.delayMin + '–' + s.delayMax + ' 秒 · 开始前请先登录对应账号';
+    }
   }
   const hasLog = els.logPanel.textContent.trim().length > 0;
   els.progressWrap.classList.toggle('hidden', !running && !state.run && !hasLog);
@@ -1949,7 +2016,7 @@ function switchView(view) {
       ? '点数字可筛选查看；勾选行后点「汇总选中」加入待上报区'
       : next === 'compare'
         ? '按套餐型号匹配不同店铺的同款产品，对比当前到手价'
-        : '巡检时后台标签页逐个取价，页面保持打开即可';
+        : '巡检时保持本页打开；矩阵速采会在下方阵列里并行开页、成排读取';
   renderAll();
 }
 
@@ -2460,6 +2527,7 @@ async function runOfficialApi() {
 
 async function finishRun() {
   const run = state.run;
+  if (run && run.matrix) await matrixShutdown('巡检结束');
   state.running = false;
   state.paused = false;
   state.pending = null;
@@ -2480,15 +2548,24 @@ async function finishRun() {
       ok: run.ok,
       fail: run.fail,
       total: run.tasks.length,
-      account: run.accountLabel || ''
+      account: run.accountLabel || '',
+      mode: run.matrix ? 'matrix' : run.foreground ? 'foreground' : 'background',
+      batches: run.matrix && run.matrixState ? run.matrixState.batchCount : null
     };
     if (run.accountLabel) state.db.lastAccount = run.accountLabel;
     await saveDb();
   }
-  setToast('巡检结束：成功 ' + (run ? run.ok : 0) + '，失败 ' + (run ? run.fail : 0));
+  const runLabel = run && run.matrix ? '矩阵速采' : '巡检';
+  const endVerb = run && run.matrix && state.stopped ? '已停止' : '结束';
+  setToast(runLabel + endVerb + '：成功 ' + (run ? run.ok : 0) + '，失败 ' + (run ? run.fail : 0));
   if (run) {
-    logLine('巡检结束：共 ' + run.tasks.length + ' 个，成功 ' + run.ok + '，失败 ' + run.fail);
-    updateProgress(run.tasks.length, run.tasks.length, '已完成');
+    logLine(runLabel + endVerb + '：共 ' + run.tasks.length + ' 个，成功 ' + run.ok + '，失败 ' + run.fail);
+    if (run.matrix) {
+      updateProgress(run.done || 0, run.tasks.length, state.stopped ? '已停止' : '已完成');
+      matrixBoardFinish(run);
+    } else {
+      updateProgress(run.tasks.length, run.tasks.length, '已完成');
+    }
   }
   state.run = null;
   renderAll();
@@ -2644,6 +2721,816 @@ async function runLoop() {
   }
 }
 
+// ============================================================
+// 矩阵速采：一次并行打开一排页面 → 成排读取 → 批量写入 → 批量关闭（破碎消散）
+// 取价规则不在这里：仍然完全由 content.js 决定，矩阵模式只是换了「打开/收结果/写库」的节奏。
+// ============================================================
+const MX_STATE_TEXT = { loading: '打开中', reading: '读取中', read: '已读', fail: '失败' };
+const MX_EMPTY_DEFAULT =
+  '<b>矩阵速采待命中</b><span>点「⚡ 矩阵速采」后，商品页会在这里排成一道弧线：批量打开 → 成排读取 → 批量写入 → 破碎关闭 → 下一批。</span>';
+
+function matrixBatchSize() {
+  const n = Number(state.db && state.db.settings ? state.db.settings.matrixBatch : 6);
+  if (!isFinite(n)) return 6;
+  return Math.max(MATRIX_MIN_BATCH, Math.min(MATRIX_MAX_BATCH, Math.round(n)));
+}
+
+function matrixGapMs() {
+  const n = Number(state.db && state.db.settings ? state.db.settings.matrixGapMs : 300);
+  if (!isFinite(n)) return 300;
+  return Math.max(120, Math.min(2000, Math.round(n)));
+}
+
+function matrixBatchDelayMs() {
+  const n = Number(state.db && state.db.settings ? state.db.settings.matrixBatchDelay : 1.5);
+  if (!isFinite(n) || n < 0) return 1500;
+  return Math.min(30000, Math.round(n * 1000));
+}
+
+function matrixShatterEnabled() {
+  return !(state.db && state.db.settings && state.db.settings.matrixShatter === false);
+}
+
+// 矩阵打开方式：默认真实多窗口；可选后台标签页 + 矩阵大屏（HUD/预演）
+function matrixUseWindows() {
+  return !(state.db && state.db.settings && state.db.settings.matrixWindowMode === false);
+}
+
+// 真实窗口排布：一扇扇商品页窗口沿浅弧线排开。
+// 注意：任务 i 放到视觉 j=n-1-i 的位置，也就是先开右边的、最后开左边的；
+// Chrome 后开的窗口压在前面，这样每扇窗的右侧（电商平台价格区）都露在外面，不会被邻居盖住。
+function matrixWindowLayout(count) {
+  const sw = (window.screen && screen.availWidth) || 1920;
+  const sh = (window.screen && screen.availHeight) || 1080;
+  const ox = Number(window.screen && screen.availLeft) || 0;
+  const oy = Number(window.screen && screen.availTop) || 0;
+  const n = Math.max(1, Math.min(MATRIX_MAX_BATCH, Number(count) || 1));
+  let width = Math.round(Math.max(430, Math.min(780, (sw - 100) / Math.max(2, Math.min(n, 3.5)))));
+  let height = Math.round(Math.max(560, Math.min(840, sh * 0.68)));
+  if (n === 1) width = Math.min(780, Math.max(560, sw * 0.5));
+  height = Math.min(height, sh - 60);
+  const margin = 30;
+  const usable = Math.max(0, sw - width - margin * 2);
+  const step = n > 1 ? usable / (n - 1) : 0;
+  const depth = Math.min(96, Math.max(0, n - 1) * 18);
+  const idealTop = (sh - height) / 2 - depth * 0.12;
+  const topBase = Math.max(12, Math.min(idealTop, sh - height - depth - 18));
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    const j = n - 1 - i;
+    const t = n > 1 ? (j / (n - 1)) * 2 - 1 : 0;
+    list.push({
+      left: (n === 1 ? Math.round((sw - width) / 2) : Math.round(margin + j * step)) + ox,
+      top: Math.round(topBase + depth * t * t) + oy,
+      width: width,
+      height: height
+    });
+  }
+  return list;
+}
+
+// 关闭前给页面一个淡出（真实窗口没法做粒子碎裂，只能让页面先淡出）
+function matrixFadeTab(tabId) {
+  if (tabId == null) return;
+  try {
+    if (!chrome.scripting || !chrome.scripting.executeScript) return;
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function () {
+        try {
+          var el = document.documentElement;
+          if (!el) return;
+          el.style.transition = 'opacity 300ms ease';
+          el.style.opacity = '0';
+        } catch (e) {
+          // 忽略
+        }
+      }
+    }).catch(function () {});
+  } catch (e) {
+    // 忽略
+  }
+}
+
+function matrixCloseSlot(slot, fade) {
+  if (!slot) return;
+  if (slot.windowId != null) {
+    if (fade) matrixFadeTab(slot.tabId);
+    const winId = slot.windowId;
+    const tabId = slot.tabId;
+    setTimeout(function () {
+      try {
+        chrome.windows.remove(winId).catch(function () {
+          if (tabId != null) {
+            try {
+              chrome.tabs.remove(tabId);
+            } catch (e) {
+              // 忽略
+            }
+          }
+        });
+      } catch (e) {
+        if (tabId != null) {
+          try {
+            chrome.tabs.remove(tabId);
+          } catch (e2) {
+            // 忽略
+          }
+        }
+      }
+    }, fade ? 300 : 0);
+  } else if (slot.tabId != null) {
+    try {
+      matrixRemoveTabs([slot.tabId]).catch(function () {});
+    } catch (e) {
+      // 忽略
+    }
+  }
+}
+
+async function matrixCloseWindows(slots, fade) {
+  const list = (slots || []).filter(function (s) {
+    return s && (s.windowId != null || s.tabId != null);
+  });
+  list.forEach(function (slot, i) {
+    setTimeout(function () {
+      matrixCloseSlot(slot, fade);
+    }, i * 90);
+  });
+  await sleep(list.length * 90 + (fade ? 380 : 120));
+}
+
+// ---------------- 矩阵大屏（独立窗口） ----------------
+// 工作台只负责采集与批量写库；显示全部交给 matrix.html / matrix.js。
+// 两个扩展页面通过 BroadcastChannel 通信（同一扩展源），握手后同步完整状态。
+let boardChannel = null;
+
+function ensureBoardChannel() {
+  if (boardChannel) return boardChannel;
+  try {
+    boardChannel = new BroadcastChannel(MATRIX_BOARD_CHANNEL);
+    boardChannel.onmessage = (ev) => {
+      const msg = ev.data || {};
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.type === 'hello') {
+        state.board.ready = true;
+        state.board.lastBoardHelloAt = Date.now();
+        const resolve = state.board.readyResolve;
+        state.board.readyResolve = null;
+        if (resolve) resolve(true);
+        // 工作台刷新后可能丢了窗口句柄：只要大屏还在发 hello，就继续心跳 + 同步
+        matrixBoardStartHeartbeat();
+        matrixBoardSync();
+      } else if (msg.type === 'bye') {
+        matrixBoardDetached();
+      }
+    };
+  } catch (e) {
+    boardChannel = null;
+  }
+  return boardChannel;
+}
+
+function matrixBoardSend(msg) {
+  const ch = ensureBoardChannel();
+  if (!ch || !msg || typeof msg !== 'object') return;
+  try {
+    ch.postMessage(Object.assign({ session: state.board.session, at: Date.now() }, msg));
+  } catch (e) {
+    // 忽略
+  }
+}
+
+function matrixBoardStatusPayload() {
+  const run = state.run;
+  const m = run && run.matrixState;
+  const f = !run && state.board.finalStats ? state.board.finalStats : null;
+  return {
+    type: 'status',
+    running: !!(run && run.matrix),
+    finished: !!state.board.finished,
+    phaseText: state.board.phase,
+    stopped: f ? !!f.stopped : !!state.stopped,
+    account: run ? (run.accountLabel || '') : '',
+    batchIndex: m ? (m.batchIndex || 0) : f ? Math.max(0, (f.batchCount || 1) - 1) : 0,
+    batchCount: m ? (m.batchCount || 0) : f ? (f.batchCount || 0) : 0,
+    batchSize: m ? (m.batchSize || 0) : f ? (f.batchSize || 0) : 0,
+    currentBatchCount: m ? (m.currentBatchCount || 0) : 0,
+    read: m ? (m.batchRead || 0) : 0,
+    done: run ? (run.done || 0) : f ? (f.done || 0) : 0,
+    total: run ? run.tasks.length : f ? (f.total || 0) : 0,
+    ok: run ? (run.ok || 0) : f ? (f.ok || 0) : 0,
+    fail: run ? (run.fail || 0) : f ? (f.fail || 0) : 0
+  };
+}
+
+function matrixBoardStatus() {
+  matrixBoardSend(matrixBoardStatusPayload());
+}
+
+function matrixBoardPhase(text) {
+  state.board.phase = text || '待命';
+  matrixBoardStatus();
+}
+
+function matrixBoardSpec() {
+  const sw = (window.screen && screen.availWidth) || 1600;
+  const sh = (window.screen && screen.availHeight) || 1000;
+  const width = Math.max(1000, Math.round(Math.min(sw * 0.94, 1760)));
+  const height = Math.max(640, Math.round(Math.min(sh * 0.9, 1040)));
+  return {
+    width: width,
+    height: height,
+    left: Math.max(0, Math.round((sw - width) / 2)),
+    top: Math.max(0, Math.round((sh - height) / 2))
+  };
+}
+
+async function matrixBoardOpen(reset) {
+  ensureBoardChannel();
+  const b = state.board;
+  if (reset) {
+    b.session = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    b.cards = [];
+    b.phase = '待命';
+    b.sub = '';
+    b.finished = false;
+    b.finalStats = null;
+  }
+  if (b.windowId != null) {
+    try {
+      await chrome.windows.update(b.windowId, { focused: true });
+      matrixBoardStartHeartbeat();
+      matrixBoardSync();
+      return true;
+    } catch (e) {
+      matrixBoardDetached();
+    }
+  }
+  // 工作台刷新过、窗口句柄丢了：先找找已经开着的矩阵大屏，别重复开
+  if (b.windowId == null) {
+    try {
+      const boardUrl = chrome.runtime.getURL('matrix.html');
+      const allTabs = await chrome.tabs.query({});
+      const found = (allTabs || []).filter((t) => t && t.url && t.url.indexOf(boardUrl) === 0);
+      if (found.length) {
+        b.tabId = found[0].id;
+        b.windowId = found[0].windowId != null ? found[0].windowId : null;
+        if (b.windowId != null) {
+          try {
+            await chrome.windows.update(b.windowId, { focused: true });
+          } catch (e) {
+            // 聚焦失败也继续复用
+          }
+        }
+        matrixBoardStartHeartbeat();
+        matrixBoardSync();
+        return true;
+      }
+    } catch (e) {
+      // tabs.query 失败就继续走新建窗口
+    }
+  }
+  // 大屏刚打过招呼（BroadcastChannel 已连上）：直接复用
+  if (b.windowId == null && b.lastBoardHelloAt && Date.now() - b.lastBoardHelloAt < 6000) {
+    matrixBoardStartHeartbeat();
+    matrixBoardSync();
+    return true;
+  }
+  b.ready = false;
+  const readyPromise = new Promise((resolve) => {
+    b.readyResolve = resolve;
+  });
+  try {
+    const spec = matrixBoardSpec();
+    const win = await chrome.windows.create(Object.assign({
+      url: chrome.runtime.getURL('matrix.html') + '?session=' + encodeURIComponent(b.session),
+      type: 'popup',
+      focused: true
+    }, spec));
+    if (!win || win.id == null) throw new Error('未能创建矩阵大屏窗口');
+    b.windowId = win.id;
+    b.tabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
+  } catch (e) {
+    b.readyResolve = null;
+    logLine('矩阵大屏打开失败：' + errText(e));
+    setToast('矩阵大屏打开失败：' + errText(e) + '（可点状态栏「矩阵大屏」重试）');
+    return false;
+  }
+  matrixBoardStartHeartbeat();
+  // 等大屏握手，最多 1.2 秒；大屏慢一点也没关系，sync 会补齐
+  await Promise.race([readyPromise, sleep(1200)]);
+  matrixBoardSync();
+  return true;
+}
+
+function matrixBoardStartHeartbeat() {
+  const b = state.board;
+  if (b.heartbeatTimer) return;
+  b.heartbeatTimer = setInterval(() => {
+    if (b.windowId == null) {
+      matrixBoardStopHeartbeat();
+      return;
+    }
+    matrixBoardSend({ type: 'heartbeat' });
+  }, 4000);
+}
+
+function matrixBoardStopHeartbeat() {
+  if (state.board.heartbeatTimer) {
+    clearInterval(state.board.heartbeatTimer);
+    state.board.heartbeatTimer = null;
+  }
+}
+
+function matrixBoardDetached() {
+  state.board.windowId = null;
+  state.board.tabId = null;
+  state.board.ready = false;
+  state.board.lastBoardHelloAt = 0;
+  matrixBoardStopHeartbeat();
+}
+
+function matrixBoardSync() {
+  const b = state.board;
+  const run = state.run;
+  const m = run && run.matrixState;
+  matrixBoardSend({
+    type: 'sync',
+    session: b.session,
+    running: !!(run && run.matrix),
+    finished: !!b.finished,
+    phase: b.phase,
+    shatter: matrixShatterEnabled(),
+    stats: matrixBoardStatusPayload(),
+    sub: b.sub || '',
+    cards: b.cards,
+    finalStats: b.finalStats
+  });
+}
+
+function matrixBoardRunStart(run, batchCount) {
+  const b = state.board;
+  b.cards = [];
+  b.finished = false;
+  b.finalStats = null;
+  b.phase = '准备中';
+  b.sub = '账号：' + (run.identity === 'plus' ? 'PLUS 会员' : '普惠') + ' · 共 ' + run.tasks.length + ' 个 SKU · 每批 ' + (run.matrixSize || matrixBatchSize()) + ' 个';
+  matrixBoardSend({
+    type: 'runStart',
+    session: b.session,
+    identity: run.identity,
+    total: run.tasks.length,
+    batchCount: batchCount,
+    batchSize: run.matrixSize || matrixBatchSize(),
+    shatter: matrixShatterEnabled()
+  });
+  matrixBoardStatus();
+}
+
+function matrixBoardBatchStart(batch, batchIndex, batchCount, batchSize) {
+  state.board.cards = [];
+  state.board.finished = false;
+  state.board.finalStats = null;
+  state.board.phase = '第 ' + (batchIndex + 1) + '/' + batchCount + ' 批 · 并行打开';
+  matrixBoardSend({
+    type: 'batchStart',
+    batchIndex: batchIndex,
+    batchCount: batchCount,
+    batchSize: batchSize,
+    count: batch.length,
+    shatter: matrixShatterEnabled()
+  });
+  matrixBoardStatus();
+}
+
+function matrixBoardCardAdd(card, index, total) {
+  state.board.cards.push(card);
+  matrixBoardSend({ type: 'cardAdd', card: card, index: index, total: total });
+}
+
+function matrixBoardCardState(card) {
+  matrixBoardSend({
+    type: 'card',
+    id: card.id,
+    state: card.state,
+    price: card.price,
+    reason: card.reason || ''
+  });
+}
+
+function matrixBoardCloseBatch(ids, batchIndex) {
+  const set = new Set(ids);
+  state.board.cards = state.board.cards.filter((c) => !set.has(c.id));
+  matrixBoardSend({
+    type: 'closeBatch',
+    ids: ids,
+    order: ids.slice(),
+    shatter: matrixShatterEnabled(),
+    staggerMs: 110,
+    batchIndex: batchIndex
+  });
+}
+
+function matrixBoardFinish(run) {
+  const b = state.board;
+  const m = run.matrixState || {};
+  b.finished = true;
+  b.phase = state.stopped ? '已停止' : '完成';
+  b.finalStats = {
+    done: run.done || 0,
+    ok: run.ok || 0,
+    fail: run.fail || 0,
+    total: run.tasks.length,
+    batchCount: m.batchCount || 0,
+    batchSize: run.matrixSize || 0,
+    stopped: !!state.stopped
+  };
+  b.cards = [];
+  matrixBoardSend({ type: 'finish', session: b.session, stats: b.finalStats, stopped: !!state.stopped });
+}
+
+function matrixBoardSayBye() {
+  matrixBoardSend({ type: 'bye' });
+  matrixBoardStopHeartbeat();
+}
+
+// ---------------- 打开 / 收结果 / 批量写入 / 批量关闭 ----------------
+async function matrixOpenSlot(task, index, total, run) {
+  const m = run.matrixState;
+  const id = 'c' + (++m.cardSeq);
+  const card = { id: id, sku: task.sku, model: task.model || '', state: 'loading', price: null, reason: '' };
+  matrixBoardCardAdd(card, index, total);
+  const slot = {
+    id: id,
+    task: task,
+    tabId: null,
+    windowId: null,
+    windowPos: null,
+    card: card,
+    finished: false,
+    result: null,
+    timer: null,
+    resolve: null
+  };
+  slot.resultPromise = new Promise((resolve) => {
+    slot.resolve = resolve;
+  });
+
+  // 1) 真实多窗口：一扇窗一个商品页，按弧线摆好
+  if (run.matrixWindows) {
+    const pos = (m.windowLayout && m.windowLayout[index]) || matrixWindowLayout(total)[index];
+    slot.windowPos = pos;
+    let win = null;
+    try {
+      win = await chrome.windows.create({
+        url: task.url,
+        type: 'popup',
+        focused: true,
+        left: pos.left,
+        top: pos.top,
+        width: pos.width,
+        height: pos.height
+      });
+    } catch (e) {
+      logLine('矩阵窗口创建失败，改用后台标签页：' + errText(e));
+      win = null;
+    }
+    if (win && win.id != null) {
+      slot.windowId = win.id;
+      slot.tabId = win.tabs && win.tabs[0] ? win.tabs[0].id : null;
+      if (slot.tabId == null) {
+        try {
+          chrome.windows.remove(win.id);
+        } catch (e) {
+          // 忽略
+        }
+        slot.windowId = null;
+      }
+    }
+  }
+
+  // 2) 窗口没建起来就退回后台标签页，保证采集能继续
+  if (slot.tabId == null) {
+    try {
+      const tab = await chrome.tabs.create({ url: task.url, active: false });
+      slot.tabId = tab.id;
+      slot.windowId = null;
+    } catch (e) {
+      matrixSlotFinish(slot, { ok: false, reason: '打开页面失败：' + errText(e) });
+      return slot;
+    }
+  }
+
+  if (state.stopped) {
+    matrixCloseSlot(slot, false);
+    matrixSlotFinish(slot, { ok: false, reason: '已停止' });
+    return slot;
+  }
+  if (state.matrix && state.matrix.pending) state.matrix.pending.set(slot.tabId, slot);
+  card.state = 'reading';
+  matrixBoardCardState(card);
+  matrixBoardStatus();
+  slot.timer = setTimeout(() => {
+    matrixSlotFinish(slot, { ok: false, reason: '等待页面价格超时（窗口加载慢 / 未登录 / 页面改版）' });
+  }, MATRIX_TIMEOUT_MS);
+  return slot;
+}
+
+function matrixSlotFinish(slot, result, reason) {
+  if (!slot || slot.finished) return;
+  slot.finished = true;
+  if (slot.timer) {
+    clearTimeout(slot.timer);
+    slot.timer = null;
+  }
+  if (state.matrix && state.matrix.pending && slot.tabId != null) state.matrix.pending.delete(slot.tabId);
+  const run = state.run;
+  let msg = result;
+  if (!msg || typeof msg !== 'object') msg = { ok: false, reason: reason || '采集失败' };
+  // 页面被合并/跳转到别的商品时，宁可不记录，也不要张冠李戴
+  if (msg.ok && msg.sku && slot.task.sku && String(msg.sku) !== String(slot.task.sku)) {
+    msg = { ok: false, reason: '页面 SKU 与目标不一致（' + msg.sku + '），已跳过' };
+  }
+  const picked = msg.ok && run ? pickPrice(run.identity, msg, slot.task.frontPrice) : null;
+  if (slot.card) {
+    if (picked) {
+      slot.card.state = 'read';
+      slot.card.price = picked.price;
+      slot.card.reason = '';
+    } else {
+      slot.card.state = 'fail';
+      slot.card.price = null;
+      slot.card.reason = msg.reason || (msg.ok ? '取到的价格不合理，已跳过' : '采集失败');
+    }
+    matrixBoardCardState(slot.card);
+  }
+  if (run && run.matrixState) {
+    run.matrixState.batchRead = (run.matrixState.batchRead || 0) + 1;
+    if (/登录|安全验证|验证码/.test(String(msg.reason || ''))) run.matrixState.loginWarn = true;
+    matrixBoardStatus();
+  }
+  slot.result = msg;
+  if (slot.resolve) slot.resolve(msg);
+}
+
+async function matrixWaitBatch(slots) {
+  if (!slots.length) return [];
+  await Promise.all(slots.map((s) => s.resultPromise));
+  return slots.map((s) => ({ slot: s, result: s.result || { ok: false, reason: '没有结果' } }));
+}
+
+async function matrixCommitBatch(settled, run) {
+  let ok = 0;
+  let fail = 0;
+  const at = new Date().toISOString();
+  for (let i = 0; i < settled.length; i++) {
+    const item = settled[i];
+    const task = item.slot.task;
+    const result = item.result || { ok: false, reason: '没有结果' };
+    const tag = '[' + (i + 1) + '/' + settled.length + '] ';
+    run.done++;
+    if (result && result.account && result.account.nickname) {
+      if (!run.accountLabel) {
+        run.accountLabel = result.account.nickname;
+        logLine('当前登录账号：' + run.accountLabel);
+      } else if (run.accountLabel !== result.account.nickname) {
+        if (state.autoRunMode) {
+          state.stopped = true;
+          logLine('⚠ 账号变化（' + run.accountLabel + ' → ' + result.account.nickname + '），自动巡检停止');
+        } else {
+          state.paused = true;
+          logLine('⚠ 账号变化（' + run.accountLabel + ' → ' + result.account.nickname + '），已自动暂停');
+          setToast('检测到电商平台账号发生变化，已暂停，请确认账号后点「继续」');
+        }
+      }
+    }
+    let pick = null;
+    let offMeta = null;
+    if (result && result.ok) {
+      pick = pickPrice(run.identity, result, task.frontPrice);
+      const threshold = thresholdFor(task, run.identity);
+      if (pick && threshold != null) {
+        const diff = Math.abs(pick.price - threshold);
+        if (diff > deviationLimitValue()) {
+          offMeta = {
+            threshold: Number(threshold),
+            limit: deviationLimitValue(),
+            confirmLimit: deviationConfirmLimitValue(),
+            attempts: [pick.price],
+            needsConfirm: diff > deviationConfirmLimitValue(),
+            at: at
+          };
+          logLine('  ⚠ ' + task.sku + ' 价格 ' + fmtMoney(pick.price) + ' 与阈值 ' + fmtMoney(threshold) +
+            ' 相差 ' + fmtMoney(diff) + (offMeta.needsConfirm ? '（需人工确认）' : '（仅提示）'));
+        }
+      }
+    }
+    let success = false;
+    try {
+      success = recordResult(task, run.identity, result, pick ? { pick: pick, offThreshold: offMeta } : null);
+    } catch (e) {
+      success = false;
+      logLine('  记录失败 ' + task.sku + '：' + errText(e));
+    }
+    if (success) {
+      ok++;
+      run.ok++;
+      run.consecutiveFails = 0;
+      const info = state.db.captures[task.sku] && state.db.captures[task.sku][run.identity];
+      logLine('  ✓ ' + tag + task.sku + ' ' + (info ? fmtMoney(info.price) + '（' + kindLabel(info.kind) + '）' : '已采集') +
+        (info && info.offThreshold ? (info.offThreshold.needsConfirm ? ' ⚠ 建议人工确认' : ' ⚠ 偏离阈值') : ''));
+    } else {
+      fail++;
+      run.fail++;
+      run.consecutiveFails = (run.consecutiveFails || 0) + 1;
+      const reason = (result && result.reason) || (result && result.ok ? '取到的价格不合理（疑似只读到数字片段/促销角标），已跳过' : '采集失败');
+      logLine('  ✗ ' + tag + task.sku + ' ' + reason);
+    }
+  }
+  await saveDb();
+  renderAll();
+  updateProgress(run.done, run.tasks.length, '已批量写入 ' + settled.length + ' 条（成功 ' + ok + '，失败 ' + fail + '）');
+  logLine('批量写入：本批 ' + settled.length + ' 个，成功 ' + ok + '，失败 ' + fail + '（累计 ' + run.done + '/' + run.tasks.length + '）');
+  if (run.consecutiveFails >= (state.autoRunMode ? 2 : 3)) {
+    if (state.autoRunMode) {
+      state.stopped = true;
+      logLine('⚠ 连续 ' + run.consecutiveFails + ' 个失败，自动巡检停止（检查登录状态 / 页面是否改版 / 是否触发验证）');
+    } else {
+      state.paused = true;
+      logLine('⚠ 连续 ' + run.consecutiveFails + ' 个失败，已自动暂停（检查登录状态 / 页面是否改版 / 是否触发验证）');
+      setToast('连续采集失败，已自动暂停，请检查页面和登录状态');
+    }
+  }
+  if (run.matrixState) {
+    run.matrixState.loginWarn = false;
+    matrixBoardStatus();
+  }
+  return { ok: ok, fail: fail };
+}
+
+async function matrixCloseBatch(slots, opts) {
+  opts = opts || {};
+  const run = state.run;
+  const ids = [];
+  const cardIds = [];
+  let hasWindows = false;
+  for (const slot of slots) {
+    if (slot.tabId != null) ids.push(slot.tabId);
+    if (slot.windowId != null) hasWindows = true;
+    if (state.matrix && state.matrix.pending) state.matrix.pending.delete(slot.tabId);
+    if (slot.timer) {
+      clearTimeout(slot.timer);
+      slot.timer = null;
+    }
+    slot.finished = true;
+    if (slot.card) cardIds.push(slot.card.id);
+  }
+  if (!opts.silent) await sleep(240);
+  if (hasWindows) {
+    await matrixCloseWindows(slots, !opts.silent);
+  } else if (ids.length) {
+    await matrixRemoveTabs(ids);
+  }
+  matrixBoardCloseBatch(cardIds, run && run.matrixState ? run.matrixState.batchIndex : 0);
+  state.board.phase = run && run.matrixWindows ? '批量关闭 · 窗口淡出' : '批量关闭 · 页面碎成粉末';
+  matrixBoardStatus();
+}
+
+function matrixAbortPending(reason) {
+  const m = state.matrix;
+  if (!m || !m.pending) return;
+  const slots = Array.from(m.pending.values());
+  for (const slot of slots) {
+    matrixSlotFinish(slot, { ok: false, reason: reason || '已停止' });
+    matrixCloseSlot(slot, false);
+  }
+  m.pending.clear();
+}
+
+// 关标签页：先整批关，失败再逐个关，避免其中一个已不存在导致整批失败
+async function matrixRemoveTabs(ids) {
+  if (!ids || !ids.length) return;
+  try {
+    await chrome.tabs.remove(ids);
+    return;
+  } catch (e) {
+    // 有页面已经被关掉了，逐个兜底
+  }
+  for (const id of ids) {
+    try {
+      await chrome.tabs.remove(id);
+    } catch (e2) {
+      // 已关闭
+    }
+  }
+}
+
+async function matrixShutdown(reason) {
+  const m = state.matrix;
+  if (!m) return;
+  const slots = Array.from(m.pending.values());
+  const cardIds = [];
+  for (const slot of slots) {
+    if (slot.card) cardIds.push(slot.card.id);
+    matrixSlotFinish(slot, { ok: false, reason: reason || '已结束' });
+    matrixCloseSlot(slot, false);
+  }
+  m.pending.clear();
+  if (cardIds.length) {
+    matrixBoardCloseBatch(cardIds, m.batchIndex || 0);
+    state.board.cards = state.board.cards.filter((c) => !cardIds.includes(c.id));
+  }
+  state.matrix = null;
+}
+
+async function runMatrixLoop() {
+  const run = state.run;
+  const size = run.matrixSize || matrixBatchSize();
+  const gap = matrixGapMs();
+  const batchCount = Math.max(1, Math.ceil(run.tasks.length / size));
+  run.matrixState = {
+    pending: new Map(),
+    batchSize: size,
+    batchIndex: 0,
+    batchCount: batchCount,
+    currentBatchCount: 0,
+    batchRead: 0,
+    cardSeq: 0,
+    loginWarn: false
+  };
+  state.matrix = run.matrixState;
+  if (state.view !== 'workbench') switchView('workbench');
+  const useWindows = run.matrixWindows === true;
+  // 真实多窗口模式：商品页窗口本身就是阵列，不再自动开大屏（大屏可手动打开做 HUD）
+  if (!useWindows) {
+    await matrixBoardOpen(true);
+  } else if (state.board.windowId != null) {
+    matrixBoardSync();
+  }
+  matrixBoardRunStart(run, batchCount);
+  logLine('矩阵速采：' + run.tasks.length + ' 个 SKU，每批 ' + size + ' 个，共 ' + batchCount + ' 批；整批读完后批量写入存储（' + (useWindows ? '真实多窗口' : '后台标签页 + 大屏') + '）');
+  if (useWindows) {
+    logLine('窗口矩阵：每批按屏幕宽度沿弧线排开 ' + Math.min(size, 12) + ' 个商品页窗口，批读完后淡出关闭');
+  } else {
+    logLine('矩阵大屏：' + (state.board.windowId != null ? '已打开独立窗口' : '未打开（采集继续）'));
+  }
+
+  for (let bi = 0; bi < batchCount; bi++) {
+    if (state.stopped) break;
+    while (state.paused && !state.stopped) {
+      matrixBoardPhase('已暂停');
+      await sleep(400);
+    }
+    if (state.stopped) break;
+    const batch = run.tasks.slice(bi * size, bi * size + size);
+    if (!batch.length) break;
+    run.matrixState.batchIndex = bi;
+    run.matrixState.batchRead = 0;
+    run.matrixState.currentBatchCount = batch.length;
+    run.matrixState.windowLayout = useWindows ? matrixWindowLayout(batch.length) : null;
+    matrixBoardBatchStart(batch, bi, batchCount, size);
+    logLine('矩阵第 ' + (bi + 1) + '/' + batchCount + ' 批：并行打开 ' + batch.length + ' 个' + (useWindows ? '窗口' : '页面'));
+
+    const slots = [];
+    for (let i = 0; i < batch.length; i++) {
+      if (state.stopped) break;
+      while (state.paused && !state.stopped) {
+        matrixBoardPhase('已暂停');
+        await sleep(350);
+      }
+      if (state.stopped) break;
+      const slot = await matrixOpenSlot(batch[i], i, batch.length, run);
+      slots.push(slot);
+      matrixBoardStatus();
+      if (i < batch.length - 1 && !state.stopped) {
+        await sleep(gap + randInt(0, Math.round(gap * 0.5)));
+      }
+    }
+    matrixBoardPhase('第 ' + (bi + 1) + '/' + batchCount + ' 批 · 成排读取');
+    const settled = await matrixWaitBatch(slots);
+    if (state.stopped) {
+      await matrixCloseBatch(slots, { silent: true });
+      break;
+    }
+    matrixBoardPhase('第 ' + (bi + 1) + '/' + batchCount + ' 批 · 批量写入');
+    await matrixCommitBatch(settled, run);
+    matrixBoardPhase('第 ' + (bi + 1) + '/' + batchCount + ' 批 · 批量关闭');
+    await matrixCloseBatch(slots, {});
+    if (run.matrixState) run.matrixState.batchRead = 0;
+    if (state.stopped) break;
+    if (state.paused) continue;
+    if (bi < batchCount - 1) {
+      const wait = matrixBatchDelayMs();
+      if (wait > 0) {
+        matrixBoardPhase('下一批准备中');
+        await sleep(wait);
+      }
+    }
+  }
+  if (state.matrix) state.matrix.pending.clear();
+}
+
 // ---------------- 重采：先选账号 + 轨道 ----------------
 let rerunResolver = null;
 
@@ -2652,10 +3539,18 @@ function defaultRerunChoice() {
   const identity = s.rerunRemember && s.rerunIdentity
     ? s.rerunIdentity
     : ((state.db.lastRun && state.db.lastRun.identity) || 'util');
-  let foreground;
-  if (s.rerunRemember && typeof s.rerunForeground === 'boolean') foreground = s.rerunForeground;
-  else foreground = s.patrolMode === 'foreground';
-  return { identity: identity === 'plus' ? 'plus' : 'util', foreground: !!foreground };
+  let mode = '';
+  if (s.rerunRemember && s.rerunMode) mode = s.rerunMode;
+  else if (s.patrolMode === 'matrix') mode = 'matrix';
+  else if (s.rerunRemember && typeof s.rerunForeground === 'boolean') mode = s.rerunForeground ? 'foreground' : 'background';
+  else mode = s.patrolMode === 'background' ? 'background' : 'foreground';
+  if (mode !== 'matrix' && mode !== 'background') mode = 'foreground';
+  return {
+    identity: identity === 'plus' ? 'plus' : 'util',
+    foreground: mode === 'foreground',
+    matrix: mode === 'matrix',
+    mode: mode
+  };
 }
 
 function openRerunDialog(opts) {
@@ -2663,9 +3558,10 @@ function openRerunDialog(opts) {
   if (!els.rerunDialog) return Promise.resolve(defaultRerunChoice());
   const dflt = defaultRerunChoice();
   const identity = opts.identity ? opts.identity : dflt.identity;
+  const matrix = typeof opts.matrix === 'boolean' ? opts.matrix : dflt.matrix;
   const foreground = typeof opts.foreground === 'boolean' ? opts.foreground : dflt.foreground;
   els.rerunIdentity.value = identity === 'plus' ? 'plus' : 'util';
-  els.rerunTrack.value = foreground ? 'foreground' : 'background';
+  els.rerunTrack.value = matrix ? 'matrix' : foreground ? 'foreground' : 'background';
   els.rerunRemember.checked = !!state.db.settings.rerunRemember;
   els.rerunHint.textContent = opts.hint || '选择本次重采使用的账号和轨道。';
   if (els.rerunDialog.open) {
@@ -2692,19 +3588,23 @@ function closeRerunDialog(result) {
 
 function confirmRerunChoice() {
   const identity = els.rerunIdentity.value === 'plus' ? 'plus' : 'util';
-  const foreground = els.rerunTrack.value === 'foreground';
+  const trackValue = els.rerunTrack.value === 'matrix' ? 'matrix' : els.rerunTrack.value === 'background' ? 'background' : 'foreground';
+  const matrix = trackValue === 'matrix';
+  const foreground = trackValue === 'foreground';
   const remember = !!els.rerunRemember.checked;
   state.db.settings.rerunRemember = remember;
   if (remember) {
     state.db.settings.rerunIdentity = identity;
     state.db.settings.rerunForeground = foreground;
+    state.db.settings.rerunMode = trackValue;
+    state.db.settings.rerunMatrix = matrix;
   }
   saveDb();
-  closeRerunDialog({ identity: identity, foreground: foreground });
+  closeRerunDialog({ identity: identity, foreground: foreground, matrix: matrix, mode: trackValue });
 }
 
 function startRerun(opts, choice) {
-  const runOpts = Object.assign({}, opts, { foreground: choice.foreground, noConfirm: true });
+  const runOpts = Object.assign({}, opts, { foreground: !!choice.foreground, matrix: !!choice.matrix, noConfirm: true });
   return startRun(choice.identity, runOpts);
 }
 
@@ -2770,14 +3670,24 @@ async function startRun(identity, opts) {
     return;
   }
   const identityLabel = identity === 'util' ? '普惠账号' : '电商平台 PLUS 会员账号';
+  // 矩阵速采：按钮显式传 matrix:true 时必定走矩阵；普通巡检在「矩阵③」模式下也走矩阵
+  const matrixMode = opts.matrix === true || (opts.matrix !== false && state.db.settings.patrolMode === 'matrix');
+  const matrixWindows = matrixMode && matrixUseWindows();
+  const matrixSize = matrixBatchSize();
   const avg = (Number(state.db.settings.delayMin) + Number(state.db.settings.delayMax)) / 2 || 4;
-  const est = Math.max(1, Math.round((tasks.length * (avg + 6)) / 60));
+  const est = matrixMode
+    ? Math.max(1, Math.round((Math.ceil(tasks.length / matrixSize) * (16 + matrixBatchDelayMs() / 1000)) / 60))
+    : Math.max(1, Math.round((tasks.length * (avg + 6)) / 60));
   if (!opts.auto && !opts.noConfirm) {
-    const modeText = state.db.settings.patrolMode === 'foreground'
-      ? '前台小窗逐个打开商品页读取价格（每单约 10–20 秒，采集期间不要用电脑）'
-      : '后台标签页逐个打开商品页读取价格（不弹窗，可暂停/停止）';
+    const modeText = matrixMode
+      ? (matrixWindows
+        ? '真实多窗口：每批同时打开 ' + matrixSize + ' 个商品页窗口，沿屏幕弧线排开读取；批读完后统一批量写入，窗口淡出关闭'
+        : '后台标签页 + 矩阵大屏：每批并行打开 ' + matrixSize + ' 个页面，大屏显示弧线与粉末动画')
+      : state.db.settings.patrolMode === 'foreground'
+        ? '前台小窗逐个打开商品页读取价格（每单约 10–20 秒，采集期间不要用电脑）'
+        : '后台标签页逐个打开商品页读取价格（不弹窗，可暂停/停止）';
     const ok = window.confirm(
-      '开始【' + identityLabel + '】巡检\n\n' +
+      '开始【' + identityLabel + '】' + (matrixMode ? '矩阵速采' : '巡检') + '\n\n' +
         '本次 SKU：' + tasks.length + ' 个\n' +
         '预计耗时：约 ' + est + ' 分钟\n' +
         '采集方式：' + modeText + '\n\n' +
@@ -2808,7 +3718,10 @@ async function startRun(identity, opts) {
     startedAt: new Date().toISOString(),
     runnerTabId: null,
     runnerWindowId: null,
-    foreground: isForegroundRun(opts)
+    foreground: matrixMode ? false : isForegroundRun(opts),
+    matrix: matrixMode,
+    matrixWindows: matrixWindows,
+    matrixSize: matrixSize
   };
   state.running = true;
   state.paused = false;
@@ -2818,15 +3731,19 @@ async function startRun(identity, opts) {
   els.logPanel.textContent = '';
   els.progressWrap.classList.remove('hidden');
   renderAll();
-  logLine('开始【' + identityLabel + '】巡检，共 ' + tasks.length + ' 个 SKU');
+  logLine('开始【' + identityLabel + '】' + (matrixMode ? '矩阵速采' : '巡检') + '，共 ' + tasks.length + ' 个 SKU' + (matrixMode ? '（每批 ' + matrixSize + ' 个 · ' + (matrixWindows ? '真实多窗口' : '后台标签页 + 大屏') + '）' : ''));
   try {
-    if (!state.run.foreground) {
-      const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
-      state.run.runnerTabId = tab.id;
+    if (matrixMode) {
+      await runMatrixLoop();
+    } else {
+      if (!state.run.foreground) {
+        const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
+        state.run.runnerTabId = tab.id;
+      }
+      await runLoop();
     }
-    await runLoop();
   } catch (e) {
-    logLine('巡检异常终止：' + errText(e));
+    logLine((matrixMode ? '矩阵速采' : '巡检') + '异常终止：' + errText(e));
   } finally {
     await finishRun();
   }
@@ -3818,7 +4735,12 @@ function openSettings() {
   els.setDeviationLimit.value = String(s.deviationLimit != null ? s.deviationLimit : 500);
   els.setDeviationConfirm.value = String(s.deviationConfirmLimit != null ? s.deviationConfirmLimit : 1500);
   els.setPreviewDelay.value = String(s.previewDelayMs != null ? s.previewDelayMs : 1000);
-  els.setPatrolMode.value = s.patrolMode === 'background' ? 'background' : 'foreground';
+  els.setPatrolMode.value = s.patrolMode === 'background' ? 'background' : s.patrolMode === 'matrix' ? 'matrix' : 'foreground';
+  if (els.setMatrixBatch) els.setMatrixBatch.value = String(s.matrixBatch != null ? s.matrixBatch : 6);
+  if (els.setMatrixGap) els.setMatrixGap.value = String(s.matrixGapMs != null ? s.matrixGapMs : 300);
+  if (els.setMatrixDelay) els.setMatrixDelay.value = String(s.matrixBatchDelay != null ? s.matrixBatchDelay : 1.5);
+  if (els.setMatrixShatter) els.setMatrixShatter.checked = s.matrixShatter !== false;
+  if (els.setMatrixWindowMode) els.setMatrixWindowMode.value = s.matrixWindowMode === false ? 'tabs' : 'windows';
   els.setAiEnabled.checked = s.aiEnabled !== false;
   els.setAiEndpoint.value = s.aiEndpoint || 'https://gateway.example.com/v1';
   els.setAiModel.value = s.aiModel || 'deepseek-flash';
@@ -3851,7 +4773,12 @@ async function saveSettings() {
     deviationLimit: Math.max(0, Math.floor(Number(els.setDeviationLimit.value) || 0)),
     deviationConfirmLimit: Math.max(0, Math.floor(Number(els.setDeviationConfirm.value) || 0)),
     previewDelayMs: Math.max(300, Math.min(5000, Math.floor(Number(els.setPreviewDelay.value) || 1000))),
-    patrolMode: els.setPatrolMode.value === 'background' ? 'background' : 'foreground',
+    patrolMode: els.setPatrolMode.value === 'matrix' ? 'matrix' : els.setPatrolMode.value === 'background' ? 'background' : 'foreground',
+    matrixBatch: Math.max(MATRIX_MIN_BATCH, Math.min(MATRIX_MAX_BATCH, Math.floor(Number(els.setMatrixBatch.value) || 6))),
+    matrixGapMs: Math.max(120, Math.min(2000, Math.floor(Number(els.setMatrixGap.value) || 300))),
+    matrixBatchDelay: Math.max(0, Math.min(30, Number(els.setMatrixDelay.value) || 0)),
+    matrixShatter: !!(els.setMatrixShatter && els.setMatrixShatter.checked),
+    matrixWindowMode: !(els.setMatrixWindowMode && els.setMatrixWindowMode.value === 'tabs'),
     aiEnabled: !!els.setAiEnabled.checked,
     aiEndpoint: (els.setAiEndpoint.value || '').trim() || 'https://gateway.example.com/v1',
     aiModel: (els.setAiModel.value || '').trim() || 'deepseek-flash',
@@ -3861,7 +4788,9 @@ async function saveSettings() {
     // 保留「重采默认账号/轨道」选择
     rerunRemember: !!prev.rerunRemember,
     rerunIdentity: prev.rerunIdentity || '',
-    rerunForeground: typeof prev.rerunForeground === 'boolean' ? prev.rerunForeground : null
+    rerunForeground: typeof prev.rerunForeground === 'boolean' ? prev.rerunForeground : null,
+    rerunMode: prev.rerunMode || '',
+    rerunMatrix: !!prev.rerunMatrix
   };
   await saveDb();
   applyTrackSelectionUI();
@@ -4135,6 +5064,14 @@ function exportBaseJson() {
 function setupRuntimeListeners() {
   chrome.runtime.onMessage.addListener((msg, sender) => {
     if (!msg || msg.type !== 'ITEM_PRICE_RESULT') return;
+    // 矩阵速采：每个标签页对应一个 slot，按 tabId 路由（并行读取）
+    if (state.matrix && state.matrix.pending && sender && sender.tab && sender.tab.id != null) {
+      const slot = state.matrix.pending.get(sender.tab.id);
+      if (slot) {
+        matrixSlotFinish(slot, msg);
+        return;
+      }
+    }
     const run = state.run;
     if (!run) return;
     if (!sender || !sender.tab || sender.tab.id !== run.runnerTabId) return;
@@ -4148,16 +5085,41 @@ function setupRuntimeListeners() {
   });
 
   chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    const url = changeInfo.url || (tab && tab.url) || '';
+    // 矩阵速采：某个页面跳到登录页时，只把这一页判失败，其余页面继续读
+    if (state.matrix && state.matrix.pending && state.matrix.pending.has(tabId)) {
+      if (url && /passport\.jd\.com|plogin\.jd\.com|login\.jd\.com/i.test(url)) {
+        logLine('⚠ 矩阵页面跳转到电商平台登录页，登录可能已失效');
+        const slot = state.matrix.pending.get(tabId);
+        matrixSlotFinish(slot, { ok: false, reason: '需要登录电商平台账号（页面跳到了登录页）' });
+      }
+      return;
+    }
     const run = state.run;
     if (!run || tabId !== run.runnerTabId) return;
-    const url = changeInfo.url || (tab && tab.url) || '';
     if (url && /passport\.jd\.com|plogin\.jd\.com|login\.jd\.com/i.test(url)) {
       logLine('⚠ 页面跳转到电商平台登录页，登录可能已失效');
       failPending('需要登录电商平台账号（页面跳到了登录页）');
     }
   });
 
+  chrome.windows.onRemoved.addListener((winId) => {
+    if (state.board.windowId === winId) {
+      matrixBoardDetached();
+      logLine('矩阵大屏窗口已关闭（采集继续；可点状态栏「矩阵大屏」重新打开）');
+    }
+  });
+
   chrome.tabs.onRemoved.addListener((tabId) => {
+    if (state.board.tabId === tabId) {
+      matrixBoardDetached();
+    }
+    // 矩阵速采：被外部关掉的页面判失败即可，不中断整轮
+    if (state.matrix && state.matrix.pending && state.matrix.pending.has(tabId)) {
+      const slot = state.matrix.pending.get(tabId);
+      matrixSlotFinish(slot, { ok: false, reason: '矩阵标签页被关闭了' });
+      return;
+    }
     const run = state.run;
     if (!run || tabId !== run.runnerTabId) return;
     failPending('采集用的后台标签页被关闭了');
@@ -4219,13 +5181,22 @@ function bindEvents() {
     if (state.apiStatus && state.apiStatus.ok) {
       setToast('官方API账号：' + (state.apiStatus.accounts || []).join(' / '));
     } else {
-      checkApiBridge().then(() => setToast('官方API 未连接：确认 巡检插件-双轨版\\启动API桥.py 正在运行（开机已自启）'));
+      checkApiBridge().then(() => setToast('官方API 未连接：确认「巡检插件-矩阵版\\启动API桥.py」正在运行（与双轨版共用 127.0.0.1:18765，只需启动一个）'));
     }
   });
   els.runOfficialBtn.addEventListener('click', () => runOfficialApi().catch((e) => setToast('官方API采集失败：' + errText(e))));
 
   els.runUtilBtn.addEventListener('click', () => startRun('util'));
   els.runPlusBtn.addEventListener('click', () => startRun('plus'));
+  if (els.runMatrixUtilBtn) els.runMatrixUtilBtn.addEventListener('click', () => startRun('util', { matrix: true }));
+  if (els.runMatrixPlusBtn) els.runMatrixPlusBtn.addEventListener('click', () => startRun('plus', { matrix: true }));
+  if (els.mxOpenBtn) {
+    els.mxOpenBtn.addEventListener('click', () => {
+      matrixBoardOpen(false).then((ok) => {
+        if (ok) setToast('矩阵大屏已打开（独立窗口）');
+      }).catch((e) => setToast('矩阵大屏打开失败：' + errText(e)));
+    });
+  }
   els.multiRerunBtn.addEventListener('click', () => {
     if (state.running) {
       setToast('已有巡检在进行中');
@@ -4319,7 +5290,12 @@ function bindEvents() {
     if (!state.running) return;
     state.stopped = true;
     state.paused = false;
-    logLine('已请求停止，当前步骤结束后停止…');
+    if (state.matrix) {
+      logLine('已请求停止，正在关闭矩阵页面…');
+      matrixAbortPending('已停止');
+    } else {
+      logLine('已请求停止，当前步骤结束后停止…');
+    }
   });
   els.dismissBanner.addEventListener('click', async () => {
     els.riskBanner.classList.add('hidden');
@@ -4393,6 +5369,8 @@ function bindEvents() {
     if (state.running) {
       e.preventDefault();
       e.returnValue = '';
+    } else {
+      matrixBoardSayBye();
     }
   });
 }
@@ -4404,20 +5382,27 @@ async function autoRunBoot() {
     const batch = Math.max(1, Math.min(500, Number(URL_PARAMS.get('batch')) || 5));
     const delayMin = Math.max(1, Math.min(30, Number(URL_PARAMS.get('delayMin')) || 2));
     const delayMax = Math.max(delayMin, Math.min(60, Number(URL_PARAMS.get('delayMax')) || 4));
+    const matrix = URL_PARAMS.get('matrix') === '1';
+    const matrixBatch = Math.max(MATRIX_MIN_BATCH, Math.min(MATRIX_MAX_BATCH, Number(URL_PARAMS.get('matrixBatch')) || 6));
     state.db.settings = {
       batchSize: batch,
       delayMin: delayMin,
       delayMax: delayMax,
       skipCapturedToday: true,
       scope: 'all',
-      keepTab: false
+      keepTab: false,
+      patrolMode: matrix ? 'matrix' : 'foreground',
+      matrixBatch: matrixBatch,
+      matrixGapMs: 300,
+      matrixBatchDelay: 1.5,
+      matrixShatter: true
     };
-    state.db.autoRun = { at: new Date().toISOString(), identity: identity, batch: batch };
+    state.db.autoRun = { at: new Date().toISOString(), identity: identity, batch: batch, matrix: matrix };
     await saveDb();
     renderRunUI();
-    logLine('检测到自动巡检参数：身份=' + identity + '，本次 ' + batch + ' 个，等待 2 秒开始…');
+    logLine('检测到自动巡检参数：身份=' + identity + '，本次 ' + batch + ' 个' + (matrix ? '（矩阵速采，每批 ' + matrixBatch + ' 个）' : '') + '，等待 2 秒开始…');
     await sleep(2000);
-    await startRun(identity, { auto: true });
+    await startRun(identity, { auto: true, matrix: matrix });
   } catch (e) {
     logLine('自动巡检启动失败：' + errText(e));
     try {
@@ -4456,7 +5441,7 @@ function updateApiStatusChip() {
   } else {
     chip.className = 'chip warn';
     chip.textContent = '官方API 未启动（点此检测）';
-    chip.title = st.error || '请运行 巡检插件-双轨版\\启动API桥.py';
+    chip.title = st.error || '请运行「巡检插件-矩阵版\\启动API桥.py」（与双轨版共用 127.0.0.1:18765）';
   }
 }
 
@@ -4730,6 +5715,7 @@ async function init() {
   if (state.db.dismissedBanner) els.riskBanner.classList.add('hidden');
   bindEvents();
   setupRuntimeListeners();
+  ensureBoardChannel();
   applyTrackIdentity();
   checkApiBridge();
   switchView('workbench');
