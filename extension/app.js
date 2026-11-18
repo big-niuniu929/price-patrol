@@ -2,11 +2,18 @@
 
 // 电商平台价格巡检工作台 v1.0
 // - 读取扩展内置的 SKU 巡检基表（由 tools/build_base_from_xlsx.py 从 SKU巡检表.xlsx 生成）
-// - 用户在 Edge 登录普惠 / PLUS 账号后，点巡检按钮，后台按节奏逐个打开商品页读取页面价格
+// - 用户在浏览器登录普惠 / PLUS 账号后，点巡检按钮，后台按节奏逐个打开商品页读取页面价格
 // - 结果对照「普惠最低到手价 / 会员最低到手价」阈值，标红预警，可导出 CSV
 // - 所有数据只存在本机 chrome.storage.local
 
+// 浏览器识别：同一份代码在 Edge / Chrome 都能用，只是提示文案和扩展页地址不同
+const IS_EDGE = /Edg\//.test((navigator && navigator.userAgent) || '');
+const BROWSER_NAME = IS_EDGE ? 'Edge' : 'Chrome';
+const EXTENSIONS_URL = IS_EDGE ? 'edge://extensions/' : 'chrome://extensions/';
+
 const STORAGE_KEY = 'patrol.db.v2';
+// 基表单独存一个 key：采集/设置等高频写入不会碰它，避免任何一次整库覆盖把 SKU 库冲掉
+const BASE_KEY = 'patrol.base.v1';
 const PRICE_TIMEOUT_MS = 35000;
 const ITEM_URL = (sku) => 'https://item.shop.example.com/' + sku + '.html';
 
@@ -20,7 +27,18 @@ const DEFAULT_SETTINGS = {
   deviationLimit: 500,
   deviationRetries: 3,
   deviationConfirmLimit: 1500,
-  previewDelayMs: 1000
+  previewDelayMs: 1000,
+  patrolMode: 'foreground',
+  aiEnabled: true,
+  aiEndpoint: 'https://gateway.example.com/v1',
+  aiModel: 'deepseek-flash',
+  aiApiKey: '',
+  aiVerifyMode: 'fallback',
+  officialApiUrl: 'http://127.0.0.1:18765',
+  // 重采时记住的账号/轨道选择
+  rerunIdentity: '',
+  rerunForeground: null,
+  rerunRemember: false
 };
 
 const DEFAULT_DB = {
@@ -28,6 +46,7 @@ const DEFAULT_DB = {
   settings: Object.assign({}, DEFAULT_SETTINGS),
   skuOverrides: {},
   captures: {},
+  thumbs: {},
   reportRows: [],
   offlineRows: [],
   offlineSkus: [],
@@ -51,9 +70,14 @@ const state = {
   stopped: false,
   run: null,
   pending: null,
+  pendingBuffer: null,
   autoRunMode: false,
   selected: new Set(),
-  baseManager: { sheet: '', draft: null }
+  baseManager: { sheet: '', draft: null },
+  compareFilter: 'all',
+  compareBusy: false,
+  baseUpgraded: null,
+  apiStatus: null
 };
 
 const URL_PARAMS = new URLSearchParams(location.search);
@@ -67,8 +91,18 @@ const els = {
   dismissBanner: $('dismissBanner'),
   viewWorkbench: $('viewWorkbench'),
   viewOverview: $('viewOverview'),
+  viewCompare: $('viewCompare'),
   tabWorkbench: $('tabWorkbench'),
   tabOverview: $('tabOverview'),
+  tabCompare: $('tabCompare'),
+  tableWrap: $('tableWrap'),
+  compareSummary: $('compareSummary'),
+  compareList: $('compareList'),
+  cmpCollectBtn: $('cmpCollectBtn'),
+  cmpFilterAll: $('cmpFilterAll'),
+  cmpFilterDiff: $('cmpFilterDiff'),
+  cmpFilterMissing: $('cmpFilterMissing'),
+  cmpExportBtn: $('cmpExportBtn'),
   viewHint: $('viewHint'),
   tableCaption: $('tableCaption'),
   ovCards: $('ovCards'),
@@ -140,9 +174,31 @@ const els = {
   setScope: $('setScope'),
   setKeepTab: $('setKeepTab'),
   setDeviationLimit: $('setDeviationLimit'),
-  setDeviationRetries: $('setDeviationRetries'),
   setDeviationConfirm: $('setDeviationConfirm'),
   setPreviewDelay: $('setPreviewDelay'),
+  setPatrolMode: $('setPatrolMode'),
+  setAiEnabled: $('setAiEnabled'),
+  setAiEndpoint: $('setAiEndpoint'),
+  setAiModel: $('setAiModel'),
+  setAiKey: $('setAiKey'),
+  setAiVerifyMode: $('setAiVerifyMode'),
+  setOfficialApiUrl: $('setOfficialApiUrl'),
+  aiBtn: $('aiBtn'),
+  aiTestBtn: $('aiTestBtn'),
+  aiStatusChip: $('aiStatusChip'),
+  apiStatusChip: $('apiStatusChip'),
+  apiAccountList: $('apiAccountList'),
+  apiAddBtn: $('apiAddBtn'),
+  apiRefreshBtn: $('apiRefreshBtn'),
+  apiAccountInfo: $('apiAccountInfo'),
+  runOfficialBtn: $('runOfficialBtn'),
+  rerunDialog: $('rerunDialog'),
+  rerunHint: $('rerunHint'),
+  rerunIdentity: $('rerunIdentity'),
+  rerunTrack: $('rerunTrack'),
+  rerunRemember: $('rerunRemember'),
+  rerunCancel: $('rerunCancel'),
+  rerunStart: $('rerunStart'),
   debugBox: $('debugBox'),
   settingsCancel: $('settingsCancel'),
   settingsSave: $('settingsSave'),
@@ -203,35 +259,73 @@ function logLine(text) {
   panel.scrollTop = panel.scrollHeight;
 }
 
-const KIND_LABEL = { hand: '到手价', main: '电商平台价', plus: 'PLUS价', manual: '手动', unknown: '价格' };
+const KIND_LABEL = { hand: '到手价', main: '电商平台价', plus: 'PLUS价', manual: '手动', official: '官方API', ai: 'AI识别', unknown: '价格' };
 const kindLabel = (kind) => KIND_LABEL[kind] || '价格';
 
-// ---------------- 轨道标识（区分原轨道 / 第二轨道） ----------------
+// ---------------- 双轨切换 / 轨道标识 ----------------
 const TRACK_INFO = {
-  key: 'track1',
-  label: '轨道① · 后台标签页',
-  meta: '后台标签页 · 原轨道'
+  track1: { key: 'track1', label: '轨道① · 后台标签页', meta: '后台标签页 · 原方式' },
+  track2: { key: 'track2', label: '轨道② · 前台窗口+AI复核', meta: '前台窗口 · AI 复核（截图不保存）' }
 };
 
-function applyTrackIdentity() {
-  document.title = '【轨道①】电商平台价格巡检工作台';
-  document.body.classList.add('track1');
+function currentTrackKey() {
+  return state.db && state.db.settings && state.db.settings.patrolMode === 'background' ? 'track1' : 'track2';
+}
+
+function applyTrackSelectionUI() {
+  const key = currentTrackKey();
+  const info = TRACK_INFO[key];
+  document.body.classList.toggle('track1', key === 'track1');
+  document.body.classList.toggle('track2', key === 'track2');
+  document.title = '【双轨版 · ' + (key === 'track1' ? '轨道①' : '轨道②') + '】电商平台价格巡检工作台';
   const badge = document.getElementById('trackBadge');
-  if (badge) badge.textContent = '轨道① · 后台标签页';
-  const meta = document.getElementById('trackMeta');
-  if (meta) meta.textContent = '后台标签页 · 原轨道';
-  const info = document.getElementById('trackInfo');
-  if (info) {
-    info.textContent = '当前使用： ' + TRACK_INFO.label + '\n扩展ID： ' + chrome.runtime.id + '\n扩展目录： ' + '巡检插件版\\extension';
+  if (badge) {
+    badge.textContent = '双轨版 · ' + info.label;
+    badge.classList.toggle('track1', key === 'track1');
+    badge.classList.toggle('track2', key === 'track2');
   }
+  const meta = document.getElementById('trackMeta');
+  if (meta) meta.textContent = info.meta;
+  const tip = document.getElementById('trackInfo');
+  if (tip) {
+    tip.textContent = '当前使用： 双轨版 · ' + info.label + '\n扩展ID： ' + chrome.runtime.id + '\n扩展目录： ' + '巡检插件-双轨版\\extension';
+  }
+  document.querySelectorAll('.trackOpt').forEach((btn) => btn.classList.toggle('active', btn.dataset.track === key));
+  if (els.setPatrolMode) els.setPatrolMode.value = key === 'track1' ? 'background' : 'foreground';
+}
+
+async function setTrack(key, opts) {
+  if (state.running) {
+    setToast('巡检进行中，先停止再切换轨道');
+    return;
+  }
+  const mode = key === 'track1' ? 'background' : 'foreground';
+  if (state.db.settings.patrolMode === mode) return;
+  state.db.settings.patrolMode = mode;
+  await saveDb();
+  applyTrackSelectionUI();
+  renderRunUI();
+  if (!(opts && opts.silent)) {
+    setToast('已切换到 ' + (key === 'track1' ? '轨道①（后台标签页）' : '轨道②（前台窗口 + AI 复核）'));
+  }
+  logLine('切换采集轨道：' + TRACK_INFO[key].label);
+}
+
+function applyTrackIdentity() {
+  if (!state.db.settings.patrolMode) state.db.settings.patrolMode = 'foreground';
+  applyTrackSelectionUI();
+  updateAiStatusChip();
+  updateApiStatusChip();
 }
 
 // ---------------- 存储 ----------------
 async function loadDb() {
   let stored = {};
+  let baseFromKey = null;
   try {
-    const got = await chrome.storage.local.get(STORAGE_KEY);
+    const got = await chrome.storage.local.get([STORAGE_KEY, BASE_KEY]);
     stored = (got && got[STORAGE_KEY]) || {};
+    baseFromKey = (got && got[BASE_KEY]) || null;
   } catch (e) {
     stored = {};
   }
@@ -240,16 +334,59 @@ async function loadDb() {
     settings: Object.assign({}, DEFAULT_SETTINGS, stored.settings || {}),
     skuOverrides: stored.skuOverrides || {},
     captures: stored.captures || {},
+    thumbs: stored.thumbs || {},
     reportRows: Array.isArray(stored.reportRows) ? stored.reportRows : [],
     offlineRows: Array.isArray(stored.offlineRows) ? stored.offlineRows : [],
     offlineSkus: Array.isArray(stored.offlineSkus) ? stored.offlineSkus : [],
-    baseOverride: stored.baseOverride || null,
+    // 独立 key 优先；旧版本只存在 db 里的，读出来并迁移到独立 key
+    baseOverride: baseFromKey || stored.baseOverride || null,
     lastRun: stored.lastRun || null,
     lastAccount: stored.lastAccount || '',
     lastIdentity: stored.lastIdentity || 'util',
     lastSavedAt: stored.lastSavedAt || null,
     dismissedBanner: !!stored.dismissedBanner
   };
+  if (!baseFromKey && stored.baseOverride) {
+    try {
+      await chrome.storage.local.set({ [BASE_KEY]: stored.baseOverride });
+    } catch (e) {
+      // 迁移失败不影响本次使用
+    }
+  }
+  // v2.0 起不再保存采集截图：把旧版本留下的缩略图丢掉，腾出存储空间
+  // （截图只在 AI 复核时于内存中临时生成，用完即弃）
+  state.db.thumbs = {};
+  // 打包的「完整版」会带 data/preset-settings.json：首次安装（本地还没有设置）时预置偏好；
+  // 已经有本地设置就不覆盖，避免每次启动把用户改过的设置冲掉。
+  if (!stored.settings) {
+    try {
+      const presetRes = await fetch(chrome.runtime.getURL('data/preset-settings.json'), { cache: 'no-store' });
+      if (presetRes.ok) {
+        const preset = await presetRes.json();
+        if (preset && typeof preset === 'object') {
+          const p = Object.assign({}, preset);
+          delete p.aiApiKey; // 密钥仍由 data/ai-config.json 提供
+          state.db.settings = Object.assign({}, state.db.settings, p);
+        }
+      }
+    } catch (e) {
+      // 没有预置文件不影响使用
+    }
+  }
+  // 预配置的 AI 参数（data/ai-config.json）自动生效，不用每次手填
+  try {
+    const cfgRes = await fetch(chrome.runtime.getURL('data/ai-config.json'), { cache: 'no-store' });
+    if (cfgRes.ok) {
+      const cfg = await cfgRes.json();
+      if (!state.db.settings.aiApiKey && cfg.apiKey) state.db.settings.aiApiKey = cfg.apiKey;
+      if (!state.db.settings.aiEndpoint && cfg.endpoint) state.db.settings.aiEndpoint = cfg.endpoint;
+      if (!state.db.settings.aiModel && cfg.model) state.db.settings.aiModel = cfg.model;
+      if (state.db.settings.aiEnabled == null && cfg.enabled != null) state.db.settings.aiEnabled = !!cfg.enabled;
+      if (!state.db.settings.aiVerifyMode && cfg.verifyMode) state.db.settings.aiVerifyMode = cfg.verifyMode;
+    }
+  } catch (e) {
+    // 没有配置文件也不影响使用
+  }
 }
 
 async function saveDb() {
@@ -261,13 +398,57 @@ async function saveDb() {
   }
 }
 
+// 基表单独写：只有「导入基表 / 管理基表保存 / 恢复内置 / 导入数据」会调用它。
+// 这样即使别的标签页用旧内存状态整库覆盖了 patrol.db.v2，SKU 库也不会丢。
+function stableStringify(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(v).sort();
+  return '{' + keys.map((k) => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
+}
+
+async function saveBaseOverride(base) {
+  state.db.baseOverride = base || null;
+  try {
+    await chrome.storage.local.set({ [BASE_KEY]: base || null });
+    // 写完立刻读回校验，确认确实落到本机（避免"以为保存了其实没写进去"）
+    // 注意：chrome.storage 读回来的对象键顺序可能和写入时不同，所以用稳定序列化比较
+    const check = await chrome.storage.local.get(BASE_KEY);
+    const wrote = check && check[BASE_KEY] ? check[BASE_KEY] : null;
+    if (stableStringify(wrote) !== stableStringify(base || null)) {
+      throw new Error('写入校验不一致');
+    }
+  } catch (e) {
+    setToast('基表保存失败：' + errText(e));
+    throw e;
+  }
+  await saveDb();
+}
+
 // ---------------- 基表 ----------------
+function baseTime(base) {
+  const t = Date.parse((base && base.generatedAt) || '');
+  return isFinite(t) ? t : 0;
+}
+
 async function loadBase() {
-  if (state.db.baseOverride && Array.isArray(state.db.baseOverride.sheets)) return state.db.baseOverride;
   const url = chrome.runtime.getURL('data/base-skus.json');
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error('读取内置基表失败：HTTP ' + res.status);
-  return await res.json();
+  const builtin = await res.json();
+  const stored = state.db.baseOverride;
+  if (!stored || !Array.isArray(stored.sheets)) return builtin;
+  // 插件自带的基表比本地保存的更新 → 自动升级（下架/手动改价按行号/SKU 保留，不会丢）
+  if (baseTime(builtin) > baseTime(stored)) {
+    state.baseUpgraded = {
+      from: stored.generatedAt || '',
+      to: builtin.generatedAt || '',
+      source: builtin.source || ''
+    };
+    await saveBaseOverride(builtin);
+    return builtin;
+  }
+  return stored;
 }
 
 function flattenRows() {
@@ -326,7 +507,9 @@ function computeStats(sheetFilter) {
   const sourceRows = sheetFilter && sheetFilter !== '全部'
     ? state.rows.filter((r) => r.sheet === sheetFilter)
     : state.rows;
-  const withSku = sourceRows.filter((r) => r.sku);
+  // 已下架的行不进「已采集 / 进度 / 待补」的分母，否则跑完会员价还会显示 134/146
+  const activeRows = sourceRows.filter((r) => !isOffline(r));
+  const withSku = activeRows.filter((r) => r.sku);
   const uniq = Array.from(new Set(withSku.map((r) => r.sku)));
   let utilDone = 0;
   let plusDone = 0;
@@ -341,24 +524,26 @@ function computeStats(sheetFilter) {
   let belowPlus = 0;
   let offThreshold = 0;
   let needsConfirm = 0;
+  let manual = 0;
   for (const row of sourceRows) {
     const st = statusOf(row);
     counts[st.key] = (counts[st.key] || 0) + 1;
-    if (row.sku) {
-      const cap = state.db.captures[row.sku];
-      if (cap && cap.util && cap.util.price != null && row.utilMin != null && cap.util.price < row.utilMin - 0.001) belowUtil++;
-      if (cap && cap.plus && cap.plus.price != null && row.plusMin != null && cap.plus.price < row.plusMin - 0.001) belowPlus++;
-      if (cap && ((cap.util && cap.util.offThreshold) || (cap.plus && cap.plus.offThreshold))) {
-        offThreshold++;
-        if (hasUnconfirmedDeviation(cap)) needsConfirm++;
-      }
+    if (!row.sku || isOffline(row)) continue;
+    const cap = state.db.captures[row.sku];
+    if (cap && cap.util && cap.util.price != null && row.utilMin != null && cap.util.price < row.utilMin - 0.001) belowUtil++;
+    if (cap && cap.plus && cap.plus.price != null && row.plusMin != null && cap.plus.price < row.plusMin - 0.001) belowPlus++;
+    if (cap && ((cap.util && cap.util.offThreshold) || (cap.plus && cap.plus.offThreshold))) {
+      offThreshold++;
+      if (hasUnconfirmedDeviation(cap)) needsConfirm++;
     }
+    if (cap && ((cap.util && cap.util.kind === 'manual') || (cap.plus && cap.plus.kind === 'manual'))) manual++;
   }
   return {
     total: sourceRows.length,
+    activeTotal: activeRows.length,
     withSku: withSku.length,
     uniqSku: uniq.length,
-    missingSku: sourceRows.length - withSku.length,
+    missingSku: activeRows.length - withSku.length,
     utilDone,
     plusDone,
     alert: counts.alert,
@@ -370,6 +555,7 @@ function computeStats(sheetFilter) {
     belowPlus,
     offThreshold,
     needsConfirm,
+    manual,
     offline: offlineCount
   };
 }
@@ -378,7 +564,7 @@ function computeStats(sheetFilter) {
 function renderStats() {
   const st = computeStats();
   const chips = [
-    { k: '基表行数', v: st.total + ' 行', cls: '' },
+    { k: '有效行数', v: st.activeTotal + ' 行', cls: '' },
     { k: '有 SKU', v: st.withSku + ' 行', cls: '' },
     { k: '去重 SKU', v: st.uniqSku + ' 个', cls: '' },
     { k: '普惠已采集', v: st.utilDone + ' / ' + st.uniqSku, cls: 'ok' },
@@ -387,6 +573,8 @@ function renderStats() {
     { k: '采集失败', v: String(st.fail), cls: '' },
     { k: '待补 SKU', v: String(st.missingSku), cls: '' }
   ];
+  if (st.offline) chips.push({ k: '已下架', v: st.offline + ' 行', cls: '' });
+  if (st.manual) chips.push({ k: '手动改价', v: String(st.manual), cls: '' });
   els.statsBar.textContent = '';
   for (const chip of chips) {
     const div = document.createElement('div');
@@ -457,6 +645,10 @@ function workbenchRows() {
       if (status === 'todo' && !(st.key === 'none' || st.key === 'partial' || st.key === 'fail')) return false;
       if (status === 'alert' && st.key !== 'alert') return false;
       if (status === 'confirm' && st.key !== 'confirm') return false;
+      if (status === 'manual') {
+        const cap = state.db.captures[row.sku] || null;
+        if (!(cap && ((cap.util && cap.util.kind === 'manual') || (cap.plus && cap.plus.kind === 'manual')))) return false;
+      }
       if (status === 'fail' && st.key !== 'fail') return false;
       if (status === 'nosku' && st.key !== 'nosku') return false;
     }
@@ -496,6 +688,8 @@ function overviewRows() {
         );
       case 'confirm':
         return hasUnconfirmedDeviation(cap);
+      case 'manual':
+        return !!(cap && ((cap.util && cap.util.kind === 'manual') || (cap.plus && cap.plus.kind === 'manual')));
       case 'fail':
         return st.key === 'fail';
       case 'none':
@@ -520,6 +714,7 @@ const OV_FILTER_LABELS = {
   normal: '高于/等于阈值',
   off: '偏离阈值',
   confirm: '需人工确认',
+  manual: '手动改价',
   fail: '采集失败',
   none: '未采集',
   partial: '部分采集',
@@ -658,7 +853,8 @@ function buildPriceCell(row, identity) {
 
   const meta = document.createElement('div');
   meta.className = 'priceMeta';
-  meta.textContent = kindLabel(info.kind) + ' · ' + fmtTime(info.at);
+  meta.textContent = kindLabel(info.kind) + (info.source ? ' · ' + info.source : '') + ' · ' + fmtTime(info.at);
+  if (info.source) meta.title = '价格来源：' + info.source;
   if (info.account) meta.title = '采集账号：' + info.account;
   td.appendChild(meta);
 
@@ -682,17 +878,14 @@ function buildPriceCell(row, identity) {
   }
 
   if (info.offThreshold) {
-    const attempts = (info.offThreshold.attempts || []).filter((x) => x != null);
     const tip =
-      '阈值 ' + fmtMoney(info.offThreshold.threshold) +
-      '；采集价依次为 ' + attempts.map((x) => fmtNum(x)).join(' / ') +
-      '；相差超过 ¥' + fmtNum(info.offThreshold.limit || deviationLimitValue()) + ' 时自动多采 ' +
-      Math.max(1, attempts.length) + ' 次，取最接近阈值的值';
+      '页面读数 ' + fmtMoney(info.price) + '，阈值 ' + fmtMoney(info.offThreshold.threshold) +
+      '，相差超过 ¥' + fmtNum(info.offThreshold.limit || deviationLimitValue()) + '（只提示，不修改读数）';
     if (info.offThreshold.needsConfirm && !info.offThreshold.confirmed) {
       const warn = document.createElement('div');
       warn.className = 'priceWarn urgent';
-      warn.textContent = '⚠ 已自动选值·待确认';
-      warn.title = tip + '；最接近的值仍与阈值相差超过 ¥' + fmtNum(info.offThreshold.confirmLimit || deviationConfirmLimitValue()) + '，确认无误请点下方「确认」';
+      warn.textContent = '⚠ 偏离阈值·待确认';
+      warn.title = tip + '；差价超过 ¥' + fmtNum(info.offThreshold.confirmLimit || deviationConfirmLimitValue()) + '，请核对页面价格；无误请点「确认」';
       td.appendChild(warn);
       const confirmBtn = document.createElement('button');
       confirmBtn.type = 'button';
@@ -710,7 +903,7 @@ function buildPriceCell(row, identity) {
     } else {
       const warn = document.createElement('div');
       warn.className = 'priceWarn';
-      warn.textContent = '⚠ 已多采·取最接近阈值';
+      warn.textContent = '⚠ 偏离阈值';
       warn.title = tip;
       td.appendChild(warn);
     }
@@ -1119,14 +1312,23 @@ function buildRow(row) {
     again.className = 'opBtn';
     again.type = 'button';
     again.textContent = '重采';
-    again.title = '按上次巡检的身份重新采集这一条';
+    again.title = '重新采集这一条（可临时选账号和轨道）';
     again.addEventListener('click', () => {
       if (state.running) {
         setToast('已有巡检在进行中');
         return;
       }
-      const identity = (state.db.lastRun && state.db.lastRun.identity) || 'util';
-      startRun(identity, { singleSku: row.sku, noConfirm: true }).catch(() => {});
+      const rowCap = state.db.captures[row.sku] || null;
+      const manualPlus = !!(rowCap && rowCap.plus && rowCap.plus.kind === 'manual');
+      const manualUtil = !!(rowCap && rowCap.util && rowCap.util.kind === 'manual');
+      const prefill = manualPlus && !manualUtil ? 'plus' : (manualUtil && !manualPlus ? 'util' : undefined);
+      openRerunDialog({
+        identity: prefill,
+        hint: '重采 1 个 SKU：' + row.sku + '\n请选择用哪个账号、哪条轨道采集。'
+      }).then((choice) => {
+        if (!choice) return;
+        startRerun({ singleSku: row.sku }, choice).catch(() => {});
+      });
     });
     op.appendChild(again);
   }
@@ -1160,7 +1362,9 @@ function renderTable() {
     b.textContent = String(rows.length);
     els.tableCaption.appendChild(document.createTextNode('总览 · ' + ovFilterLabel() + ' · 共 '));
     els.tableCaption.appendChild(b);
-    els.tableCaption.appendChild(document.createTextNode(' 行'));
+    const st = computeStats(state.ovFilter.sheet);
+    const hidden = state.ovFilter.key === 'offline' ? 0 : st.offline;
+    els.tableCaption.appendChild(document.createTextNode(' 行' + (hidden ? '（另有 ' + hidden + ' 行已下架，已隐藏）' : '')));
   }
   if (!rows.length) {
     els.empty.classList.remove('hidden');
@@ -1211,17 +1415,18 @@ function updateSelectionUI() {
 
 // ---------------- 总览页 ----------------
 const OV_CARDS = [
-  { key: 'all', label: '全部行', sub: '基表行数', cls: '', value: (st) => st.total + ' 行' },
+  { key: 'all', label: '全部行', sub: (st) => (st.offline ? '基表 ' + st.total + ' 行 · 已下架 ' + st.offline : '基表行数'), cls: '', value: (st) => st.activeTotal + ' 行' },
   { key: 'utilDone', label: '普惠已采集', sub: '普惠当前价格有值', cls: 'good', value: (st) => st.utilDone + ' / ' + st.uniqSku },
   { key: 'plusDone', label: '会员已采集', sub: '会员当前价格有值', cls: 'plusStat', value: (st) => st.plusDone + ' / ' + st.uniqSku },
   { key: 'alert', label: '低于阈值', sub: '需要重点看', cls: 'warn', value: (st) => String(st.alert) },
   { key: 'normal', label: '高于/等于阈值', sub: '两价已采且不破价', cls: 'good', value: (st) => String(st.ok) },
-  { key: 'off', label: '偏离阈值', sub: '差价>500，已自动多采', cls: 'warn', value: (st) => String(st.offThreshold) },
+  { key: 'off', label: '偏离阈值', sub: '差价>500，仅提示', cls: 'warn', value: (st) => String(st.offThreshold) },
   { key: 'confirm', label: '需人工确认', sub: '已选值，点确认转正常', cls: 'warn', value: (st) => String(st.needsConfirm) },
+  { key: 'manual', label: '手动改价', sub: '人工录入，点此查看/重采', cls: 'warn', value: (st) => String(st.manual) },
   { key: 'fail', label: '采集失败', sub: '可重采或手动改', cls: 'warn', value: (st) => String(st.fail) },
   { key: 'none', label: '未采集', sub: '还没跑过', cls: '', value: (st) => String(st.none) },
   { key: 'nosku', label: '待补 SKU', sub: '表格里可直接补', cls: '', value: (st) => String(st.missingSku) },
-  { key: 'offline', label: '已下架', sub: '已移入下架库，可恢复', cls: '', value: (st) => String(st.offline) }
+  { key: 'offline', label: '已下架', sub: '已移入下架库，可恢复', cls: '', value: (st) => st.offline + ' 行' }
 ];
 
 function renderOverview() {
@@ -1247,7 +1452,7 @@ function renderOvCards(st) {
     v.textContent = card.value(st);
     const s = document.createElement('div');
     s.className = 'ovSub';
-    s.textContent = card.sub;
+    s.textContent = typeof card.sub === 'function' ? card.sub(st) : card.sub;
     btn.appendChild(k);
     btn.appendChild(v);
     btn.appendChild(s);
@@ -1371,7 +1576,13 @@ function renderBaseInfo() {
   const total = base.totalRows != null ? base.totalRows : state.rows.length;
   const withSku = base.totalWithSku != null ? base.totalWithSku : state.rows.filter((r) => r.sku).length;
   let text = '基表：' + sheets + ' 个类目 · ' + total + ' 行 · ' + withSku + ' 行有 SKU · 生成于 ' + (base.generatedAt ? fmtTime(base.generatedAt) : '未知');
-  if (state.db.baseOverride) text += '（当前使用导入的基表）';
+  if (state.db.baseOverride) {
+    const src = state.db.baseOverride.source || '导入';
+    text += '｜当前使用：' + src + '的基表';
+    if (state.db.baseOverride.generatedAt) text += '（保存于 ' + fmtTime(state.db.baseOverride.generatedAt) + '）';
+  } else {
+    text += '｜当前使用：内置基表';
+  }
   els.baseInfo.textContent = text;
 }
 
@@ -1394,32 +1605,351 @@ function renderRunUI() {
   updateSelectionUI();
 }
 
+// ---------------- 同品比价（跨店铺同型号不同 SKU） ----------------
+// 3C店铺 / 大家电 里同一款产品会用不同 SKU 上架，这里按「套餐型号」自动配对，
+// 忽略空格、-京仓、大小写等写法差异，再对比两个店铺采集到的到手价。
+function compareKeyOf(row) {
+  return String(row.model || '')
+    .replace(/[\s\u3000]+/g, '')
+    .replace(/[-－—_/／]+/g, '')
+    .replace(/京仓/g, '')
+    .toUpperCase();
+}
+
+function compareEntries() {
+  const map = new Map();
+  for (const row of state.rows) {
+    if (!row.sku || isOffline(row)) continue;
+    const key = compareKeyOf(row);
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, { key: key, model: row.model, entries: [] });
+    const cap = capOf(row) || {};
+    map.get(key).entries.push({
+      row: row,
+      sheet: row.sheet,
+      util: cap.util && cap.util.price != null ? cap.util : null,
+      plus: cap.plus && cap.plus.price != null ? cap.plus : null
+    });
+  }
+  const groups = [];
+  for (const g of map.values()) {
+    const sheets = new Set(g.entries.map((e) => e.sheet));
+    if (sheets.size < 2) continue; // 只保留跨店铺的同款
+    const spread = (field) => {
+      const list = g.entries.filter((e) => e[field] != null);
+      if (list.length < 2) return null;
+      let min = list[0];
+      let max = list[0];
+      for (const e of list) {
+        if (e[field].price < min[field].price) min = e;
+        if (e[field].price > max[field].price) max = e;
+      }
+      const diff = max[field].price - min[field].price;
+      return { diff: diff, has: diff > 0.005, min: min, max: max, minPrice: min[field].price, maxPrice: max[field].price };
+    };
+    const utilSpread = spread('util');
+    const plusSpread = spread('plus');
+    const missing = g.entries.some((e) => e.util == null || e.plus == null);
+    const hasDiff = !!(utilSpread && utilSpread.has) || !!(plusSpread && plusSpread.has);
+    groups.push({
+      model: g.model,
+      key: g.key,
+      entries: g.entries,
+      utilSpread: utilSpread,
+      plusSpread: plusSpread,
+      missing: missing,
+      hasDiff: hasDiff
+    });
+  }
+  groups.sort((a, b) => {
+    const sa = (a.hasDiff ? 2 : 0) + (a.missing ? 1 : 0);
+    const sb = (b.hasDiff ? 2 : 0) + (b.missing ? 1 : 0);
+    if (sb !== sa) return sb - sa;
+    return String(a.model || '').localeCompare(String(b.model || ''));
+  });
+  return groups;
+}
+
+function compareSkuList() {
+  const groups = compareEntries();
+  const skus = [];
+  const seen = new Set();
+  for (const g of groups) {
+    for (const e of g.entries) {
+      const sku = e.row && e.row.sku;
+      if (!sku || seen.has(sku)) continue;
+      seen.add(sku);
+      skus.push(sku);
+    }
+  }
+  return { groups: groups.length, skus: skus };
+}
+
+function compareBadge(label, spread) {
+  const span = document.createElement('span');
+  if (!spread) {
+    span.className = 'cmpBadge muted';
+    span.textContent = label + ' 待采齐';
+  } else if (spread.has) {
+    span.className = 'cmpBadge diff';
+    span.textContent = label + '差 ' + fmtMoney(spread.diff) + '（' + spread.max.sheet + ' 高 / ' + spread.min.sheet + ' 低）';
+    span.title = spread.max.sheet + '：' + fmtMoney(spread.maxPrice) + '\n' + spread.min.sheet + '：' + fmtMoney(spread.minPrice);
+  } else {
+    span.className = 'cmpBadge ok';
+    span.textContent = label + ' 一致';
+  }
+  return span;
+}
+
+function comparePriceCell(info) {
+  const td = document.createElement('td');
+  td.className = 'money';
+  if (!info) {
+    td.classList.add('cmpMissing');
+    td.textContent = '—';
+    return td;
+  }
+  td.textContent = fmtMoney(info.price);
+  if (info.kind) {
+    const k = document.createElement('div');
+    k.className = 'cmpKind';
+    k.textContent = kindLabel(info.kind);
+    td.appendChild(k);
+  }
+  return td;
+}
+
+function buildCompareRow(entry) {
+  const row = entry.row;
+  const tr = document.createElement('tr');
+  const tdSheet = document.createElement('td');
+  tdSheet.textContent = row.sheet;
+  tr.appendChild(tdSheet);
+  const tdExcel = document.createElement('td');
+  tdExcel.textContent = row.excelRow != null ? String(row.excelRow) : '';
+  tr.appendChild(tdExcel);
+  const tdSku = document.createElement('td');
+  tdSku.textContent = row.sku;
+  tr.appendChild(tdSku);
+  tr.appendChild(comparePriceCell(entry.util));
+  tr.appendChild(comparePriceCell(entry.plus));
+  const tdStatus = document.createElement('td');
+  const st = statusOf(row);
+  const badge = document.createElement('span');
+  badge.className = 'badge ' + st.key;
+  badge.textContent = st.text;
+  tdStatus.appendChild(badge);
+  tr.appendChild(tdStatus);
+  const tdOp = document.createElement('td');
+  const op = document.createElement('div');
+  op.className = 'opCell';
+  const openBtn = document.createElement('a');
+  openBtn.className = 'opBtn';
+  openBtn.textContent = '打开';
+  openBtn.target = '_blank';
+  openBtn.rel = 'noreferrer';
+  openBtn.href = ITEM_URL(row.sku);
+  op.appendChild(openBtn);
+  const rerunBtn = document.createElement('button');
+  rerunBtn.type = 'button';
+  rerunBtn.className = 'opBtn';
+  rerunBtn.textContent = '重采';
+  rerunBtn.title = '重采这一条（可临时选账号和轨道）';
+  rerunBtn.addEventListener('click', () => {
+    if (state.running) {
+      setToast('已有巡检在进行中');
+      return;
+    }
+    openRerunDialog({
+      hint: '重采 1 个 SKU：' + row.sku + '\n请选择用哪个账号、哪条轨道采集。'
+    }).then((choice) => {
+      if (!choice) return;
+      startRerun({ singleSku: row.sku }, choice).catch(() => {});
+    });
+  });
+  op.appendChild(rerunBtn);
+  tdOp.appendChild(op);
+  tr.appendChild(tdOp);
+  return tr;
+}
+
+function compareDisplayModel(model) {
+  return String(model || '').replace(/[-－]?\s*京仓\s*$/i, '').trim() || String(model || '');
+}
+
+function buildCompareGroup(group) {
+  // 返回一个 <tbody>：组头一行 + 每个店铺一行，外层只有一个总表，避免每组建一个表格导致渲染卡顿
+  const tbody = document.createElement('tbody');
+  tbody.className = 'cmpGroup' + (group.hasDiff ? ' hasDiff' : '');
+
+  const headRow = document.createElement('tr');
+  headRow.className = 'cmpGroupHeadRow';
+  const headCell = document.createElement('td');
+  headCell.colSpan = 7;
+  const model = document.createElement('span');
+  model.className = 'cmpModel';
+  model.textContent = compareDisplayModel(group.model) || group.key;
+  model.title = '匹配键：' + group.key;
+  headCell.appendChild(model);
+  headCell.appendChild(compareBadge('普惠', group.utilSpread));
+  headCell.appendChild(compareBadge('会员', group.plusSpread));
+  if (group.missing) {
+    const m = document.createElement('span');
+    m.className = 'cmpBadge muted';
+    m.textContent = '有店铺未采齐';
+    headCell.appendChild(m);
+  }
+  headRow.appendChild(headCell);
+  tbody.appendChild(headRow);
+
+  const order = ['3C店铺', '大家电', '品牌A', '音视频店'];
+  const entries = group.entries.slice().sort((a, b) => {
+    const ia = order.indexOf(a.sheet);
+    const ib = order.indexOf(b.sheet);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a.row.excelRow || 0) - (b.row.excelRow || 0);
+  });
+  for (const e of entries) tbody.appendChild(buildCompareRow(e));
+  return tbody;
+}
+
+function renderCompare() {
+  if (!els.compareList) return;
+  if (state.compareBusy) return;
+  state.compareBusy = true;
+  try {
+    const groups = compareEntries();
+    let skuCount = 0;
+    const skuSeen = new Set();
+    for (const g of groups) for (const e of g.entries) if (e.row && e.row.sku && !skuSeen.has(e.row.sku)) { skuSeen.add(e.row.sku); skuCount++; }
+    const diffCount = groups.filter((g) => g.hasDiff).length;
+    const missCount = groups.filter((g) => g.missing).length;
+    const okCount = groups.filter((g) => !g.hasDiff && !g.missing).length;
+    const storeNames = [...new Set(groups.flatMap((g) => g.entries.map((e) => e.sheet)))];
+    if (els.compareSummary) {
+      els.compareSummary.textContent =
+        '同款分组 ' + groups.length + ' 组（' + (storeNames.join(' / ') || '无') + '）｜共 ' + skuCount + ' 个 SKU｜有差异 ' + diffCount +
+        ' 组｜一致 ' + okCount + ' 组｜待采齐 ' + missCount + ' 组';
+    }
+    const btnOn = (el, on) => { if (el) el.classList.toggle('active', !!on); };
+    btnOn(els.cmpFilterAll, state.compareFilter === 'all');
+    btnOn(els.cmpFilterDiff, state.compareFilter === 'diff');
+    btnOn(els.cmpFilterMissing, state.compareFilter === 'missing');
+    if (els.cmpCollectBtn) {
+      els.cmpCollectBtn.disabled = !!state.running || !groups.length;
+      els.cmpCollectBtn.title = state.running
+        ? '巡检进行中，先停止/等待完成再采集'
+        : '把当前比价的全部 SKU（两个店铺都算）按同一账号、同一轨道采集一遍';
+    }
+
+    const list = groups.filter((g) => {
+      if (state.compareFilter === 'diff') return g.hasDiff;
+      if (state.compareFilter === 'missing') return g.missing;
+      return true;
+    });
+    els.compareList.textContent = '';
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'cmpEmpty';
+      empty.textContent = groups.length
+        ? '当前筛选没有符合条件的同款分组，点「全部」看看。'
+        : '还没有跨店铺的同款产品：需要同一「套餐型号」在 2 个店铺里都有 SKU（且未下架）。';
+      els.compareList.appendChild(empty);
+      return;
+    }
+    // 只用一个总表放所有分组（避免几十个嵌套表格把页面拖卡）
+    const table = document.createElement('table');
+    table.className = 'cmpTable';
+    const thead = document.createElement('thead');
+    const hr = document.createElement('tr');
+    for (const label of ['店铺', '行', 'SKU', '普惠当前价', '会员当前价', '状态', '操作']) {
+      const th = document.createElement('th');
+      th.textContent = label;
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    const maxRender = 400;
+    for (const g of list.slice(0, maxRender)) table.appendChild(buildCompareGroup(g));
+    els.compareList.appendChild(table);
+    if (list.length > maxRender) {
+      const more = document.createElement('div');
+      more.className = 'cmpEmpty';
+      more.textContent = '还有 ' + (list.length - maxRender) + ' 组未显示（可用「导出比价 CSV」查看全部）。';
+      els.compareList.appendChild(more);
+    }
+  } catch (e) {
+    try {
+      els.compareList.textContent = '';
+      const err = document.createElement('div');
+      err.className = 'cmpEmpty';
+      err.textContent = '同品比价渲染失败：' + ((e && e.message) || e) + '\n按 F12 打开控制台，把红色报错发我。';
+      els.compareList.appendChild(err);
+      console.error('renderCompare failed', e);
+    } catch (e2) {
+      // 忽略
+    }
+  } finally {
+    state.compareBusy = false;
+  }
+}
+
+function exportCompareCsv() {
+  const groups = compareEntries();
+  if (!groups.length) {
+    setToast('还没有可导出的同款分组');
+    return;
+  }
+  const header = ['型号', '匹配键', '店铺', 'Excel行', 'SKU', '套餐', '普惠当前价', '普惠类型', '会员当前价', '会员类型', '普惠价差', '会员价差', '状态'];
+  const lines = [header.map(csvCell).join(',')];
+  for (const g of groups) {
+    const utilDiff = g.utilSpread && g.utilSpread.has ? g.utilSpread.diff : '';
+    const plusDiff = g.plusSpread && g.plusSpread.has ? g.plusSpread.diff : '';
+    for (const e of g.entries) {
+      lines.push([
+        compareDisplayModel(g.model) || '', g.key, e.sheet, e.row.excelRow, e.row.sku, e.row.package || '',
+        e.util ? e.util.price : '', e.util ? kindLabel(e.util.kind) : '',
+        e.plus ? e.plus.price : '', e.plus ? kindLabel(e.plus.kind) : '',
+        utilDiff, plusDiff, statusOf(e.row).text
+      ].map(csvCell).join(','));
+    }
+  }
+  downloadText('\ufeff' + lines.join('\r\n'), 'text/csv;charset=utf-8', '同品比价-' + todayStamp() + '.csv');
+  setToast('已导出同品比价 CSV');
+}
+
 function renderAll() {
   renderStats();
   renderAccountInfo();
   renderBaseInfo();
   renderRunUI();
   renderReportArea();
-  if (state.view === 'overview') {
+  if (state.view === 'compare') {
+    renderCompare();
+  } else if (state.view === 'overview') {
     renderOverview();
   } else {
     renderTabs();
   }
-  renderTable();
+  if (state.view !== 'compare') renderTable();
 }
 
 function switchView(view) {
-  const next = view === 'overview' ? 'overview' : 'workbench';
+  const next = view === 'overview' ? 'overview' : view === 'compare' ? 'compare' : 'workbench';
   if (state.view === next) return;
   state.view = next;
   els.tabWorkbench.classList.toggle('active', next === 'workbench');
   els.tabOverview.classList.toggle('active', next === 'overview');
+  if (els.tabCompare) els.tabCompare.classList.toggle('active', next === 'compare');
   els.viewWorkbench.classList.toggle('hidden', next !== 'workbench');
   els.viewOverview.classList.toggle('hidden', next !== 'overview');
+  if (els.viewCompare) els.viewCompare.classList.toggle('hidden', next !== 'compare');
+  if (els.tableWrap) els.tableWrap.classList.toggle('hidden', next === 'compare');
   els.viewHint.textContent =
     next === 'overview'
       ? '点数字可筛选查看；勾选行后点「汇总选中」加入待上报区'
-      : '巡检时后台标签页逐个取价，页面保持打开即可';
+      : next === 'compare'
+        ? '按套餐型号匹配不同店铺的同款产品，对比当前到手价'
+        : '巡检时后台标签页逐个取价，页面保持打开即可';
   renderAll();
 }
 
@@ -1537,7 +2067,9 @@ function recordResult(task, identity, result, extra) {
       candidates: (result.candidates || []).slice(0, 20),
       title: result.title || '',
       url: result.url || '',
-      flags: result.flags || null
+      flags: result.flags || null,
+      source: result.source || '',
+      priceChanges: result.priceChanges && result.priceChanges.length ? result.priceChanges : null
     };
   } else {
     cap.fail = { reason: (result && result.reason) || '采集失败', at: at, identity: identity };
@@ -1577,6 +2109,24 @@ function waitForResult(sku, timeoutMs) {
         resolve(msg);
       }
     };
+    // 第二轨道：窗口/页面可能先于监听器把结果送达，这里补一次缓冲结果
+    const buffered = state.pendingBuffer;
+    if (
+      buffered &&
+      buffered.msg &&
+      buffered.msg.sku === sku &&
+      Date.now() - buffered.at < 15000 &&
+      state.run &&
+      buffered.tabId === state.run.runnerTabId
+    ) {
+      const msg = buffered.msg;
+      state.pendingBuffer = null;
+      const p = state.pending;
+      state.pending = null;
+      clearTimeout(timer);
+      p.resolve(msg);
+      return;
+    }
   });
 }
 
@@ -1609,6 +2159,305 @@ function updateProgress(done, total, text) {
   }
 }
 
+// ---------------- 第二轨道：前台窗口 / 截图 / AI / 官方API ----------------
+function isForegroundRun(opts) {
+  // 显式传了 true/false 就按传入的轨道来（重采时可以临时指定轨道）
+  if (opts && typeof opts.foreground === 'boolean') return opts.foreground;
+  return state.db && state.db.settings && state.db.settings.patrolMode === 'foreground';
+}
+
+async function closeRunnerWindow(run) {
+  if (!run || run.runnerWindowId == null) return;
+  try {
+    await chrome.windows.remove(run.runnerWindowId);
+  } catch (e) {
+    // 已关闭
+  }
+  run.runnerWindowId = null;
+  run.runnerTabId = null;
+}
+
+async function foregroundEnsureWindow(run, task) {
+  if (run.runnerWindowId != null && run.runnerTabId != null) {
+    try {
+      state.pendingBuffer = null;
+      await chrome.tabs.update(run.runnerTabId, { url: task.url });
+      return;
+    } catch (e) {
+      await closeRunnerWindow(run);
+    }
+  }
+  const sw = (window.screen && screen.availWidth) || 1400;
+  const sh = (window.screen && screen.availHeight) || 900;
+  const width = Math.round(Math.min(1180, Math.max(900, sw * 0.62)));
+  const height = Math.round(Math.min(880, Math.max(620, sh * 0.8)));
+  const left = Math.max(10, Math.round((sw - width) / 2));
+  const top = Math.max(10, Math.round((sh - height) / 2));
+  state.pendingBuffer = null;
+  const win = await chrome.windows.create({
+    url: task.url,
+    type: 'popup',
+    focused: true,
+    width: width,
+    height: height,
+    left: left,
+    top: top
+  });
+  if (!win || win.id == null) throw new Error('未能创建前台窗口');
+  run.runnerWindowId = win.id;
+  const tab = win.tabs && win.tabs[0] ? win.tabs[0] : null;
+  run.runnerTabId = tab ? tab.id : null;
+}
+
+async function foregroundCapture(run, task) {
+  await foregroundEnsureWindow(run, task);
+  let result;
+  try {
+    result = await waitForResult(task.sku, PRICE_TIMEOUT_MS);
+  } catch (e) {
+    result = { ok: false, reason: '等待价格超时：' + errText(e) };
+  }
+  let shot = null;
+  if (run.runnerWindowId != null) {
+    try {
+      shot = await chrome.tabs.captureVisibleTab(run.runnerWindowId, { format: 'png' });
+    } catch (e) {
+      logLine('  截图失败：' + errText(e));
+    }
+  }
+  return { result: result, shot: shot };
+}
+
+const AI_PROMPT = '图片是电商平台商品页的价格区域。只输出一个 JSON 对象，不要解释、不要输出思考过程：' +
+  '{"page_state":"product|login|verify|home|offline|other","hand_price":数字或null,"jd_price":数字或null,"plus_price":数字或null}。' +
+  'hand_price 取大号红字的「到手价」；jd_price 取旁边小号或带删除线的「电商平台价」；plus_price 取「PLUS会员价」。' +
+  '不要把优惠、分期、满减、评分、评价数当成价格；只输出第一个 JSON，不要代码块。';
+
+function aiNum(v) {
+  const n = Number(v);
+  return isFinite(n) && n > 0 ? n : null;
+}
+
+async function aiExtractPrice(dataUrl) {
+  const s = state.db.settings;
+  if (!s.aiEnabled) return null;
+  const endpoint = String(s.aiEndpoint || '').replace(/\/+$/, '');
+  const key = String(s.aiApiKey || '').trim();
+  if (!endpoint || !key) return null;
+  // deepseek-flash 是推理模型：max_tokens 太小会把预算全花在 reasoning 上、content 返回空。
+  // 这里给足预算，并在返回空内容时自动加大再试一次。
+  const budgets = [2000, 4000];
+  let lastErr = null;
+  for (const budget of budgets) {
+    const body = {
+      model: s.aiModel || 'deepseek-flash',
+      temperature: 0,
+      max_tokens: budget,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: AI_PROMPT },
+          { type: 'image_url', image_url: { url: dataUrl } }
+        ]
+      }]
+    };
+    const res = await fetch(endpoint + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('AI 接口 HTTP ' + res.status);
+    const data = await res.json();
+    const choice = (data.choices || [])[0] || {};
+    const text = (choice.message && choice.message.content) || '';
+    if (!text.trim()) {
+      lastErr = new Error('AI 返回空内容（finish=' + (choice.finish_reason || '?') + '，token 预算 ' + budget + '）');
+      continue;
+    }
+    const match = text.match(/\{[\s\S]*\}/);
+    let parsed = {};
+    if (match) {
+      try {
+        parsed = JSON.parse(match[0]);
+      } catch (e) {
+        parsed = {};
+      }
+    }
+    return {
+      page_state: String(parsed.page_state || 'other'),
+      hand_price: aiNum(parsed.hand_price),
+      jd_price: aiNum(parsed.jd_price),
+      plus_price: aiNum(parsed.plus_price),
+      tokens: budget,
+      raw: String(text || '')
+    };
+  }
+  if (lastErr) throw lastErr;
+  return null;
+}
+
+function aiPlausiblePrice(price, frontPrice) {
+  if (price == null) return false;
+  const p = Number(price);
+  if (!isFinite(p) || p < 30) return false;
+  if (frontPrice && frontPrice > 0 && p > frontPrice * 1.05) return false;
+  return true;
+}
+
+async function analyzeShot(task, identity, result, shot) {
+  const s = state.db.settings;
+  if (!s.aiEnabled || s.aiVerifyMode === 'off') return null;
+  const domPick = result && result.ok ? pickPrice(identity, result, task.frontPrice) : null;
+  const needAi = s.aiVerifyMode === 'all' || !domPick;
+  if (!needAi) return null;
+  // 截图绝不落盘：只在内存里裁剪 → 调 AI → 用完丢弃
+  const img = await cropShot(shot, result && result.rect, result && result.viewport);
+  let ai = null;
+  try {
+    ai = await aiExtractPrice(img);
+  } catch (e) {
+    return { info: { at: new Date().toISOString(), model: s.aiModel || '', error: errText(e) }, pick: null };
+  }
+  if (!ai) return null;
+  const info = {
+    at: new Date().toISOString(),
+    model: s.aiModel || '',
+    page_state: ai.page_state,
+    hand_price: ai.hand_price,
+    jd_price: ai.jd_price,
+    plus_price: ai.plus_price,
+    raw: String(ai.raw || '').slice(0, 2000)
+  };
+  let pick = null;
+  if (!domPick) {
+    const candidates = identity === 'plus'
+      ? [ai.plus_price, ai.hand_price, ai.jd_price]
+      : [ai.hand_price, ai.jd_price, ai.plus_price];
+    for (const c of candidates) {
+      if (aiPlausiblePrice(c, task.frontPrice)) {
+        pick = Number(c);
+        break;
+      }
+    }
+    if (pick != null) info.fallback = true;
+  } else if (ai.hand_price != null && Math.abs(Number(ai.hand_price) - domPick.price) > 0.5) {
+    info.mismatch = { dom: domPick.price, ai: Number(ai.hand_price) };
+  }
+  return { info: info, pick: pick };
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('图片解码失败'));
+    img.src = src;
+  });
+}
+
+// 只把「价格那一小块」裁出来交给 AI：识别更准，也省 token。
+// 截图用完即弃，不写入 chrome.storage（不再占内存/存储）。
+async function cropShot(shot, rect, viewport) {
+  try {
+    const img = await loadImage(shot);
+    const vw = viewport && viewport.w ? viewport.w : img.width;
+    const vh = viewport && viewport.h ? viewport.h : img.height;
+    // DOM 没给出价格位置时，按经验裁右上角（电商平台价格区在右上）
+    if (!rect) rect = { left: vw * 0.45, top: vh * 0.05, width: vw * 0.55, height: vh * 0.5 };
+    const scale = vw > 0 ? img.width / vw : 1;
+    const pad = 80;
+    const x = Math.max(0, Math.round((rect.left - pad) * scale));
+    const y = Math.max(0, Math.round((rect.top - pad) * scale));
+    const w = Math.min(img.width - x, Math.round((rect.width + pad * 2) * scale));
+    const h = Math.min(img.height - y, Math.round((rect.height + pad * 2) * scale));
+    if (!(w > 20 && h > 20)) return shot;
+    const up = Math.min(3, Math.max(1, Math.round(900 / w)));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * up);
+    canvas.height = Math.round(h * up);
+    const ctx = canvas.getContext('2d');
+    if (ctx && 'imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    return shot;
+  }
+}
+
+// 说明：v2.0 起不再保存采集截图（AI 用完即弃），也不再维护 thumbs 存储。
+
+async function runOfficialApi() {
+  if (state.running) {
+    setToast('巡检进行中，先停止再采集官方API');
+    return;
+  }
+  const s = state.db.settings;
+  const base = String(s.officialApiUrl || 'http://127.0.0.1:18765').replace(/\/+$/, '');
+  const rows = state.rows.filter((r) => r.sku && !isOffline(r));
+  const skus = Array.from(new Set(rows.map((r) => r.sku)));
+  if (!skus.length) {
+    setToast('没有可采集的 SKU');
+    return;
+  }
+  setToast('官方API采集中…（' + skus.length + ' 个 SKU）');
+  let data;
+  try {
+    const res = await fetch(base + '/api/prices?skus=' + encodeURIComponent(skus.join(',')), { method: 'GET' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  } catch (e) {
+    setToast('官方API不可用：' + errText(e) + '（检查 API 桥是否在运行）');
+    logLine('官方API不可用：' + errText(e));
+    checkApiBridge();
+    return;
+  }
+  if (!data || !data.ok) {
+    setToast('官方API返回异常：' + JSON.stringify(data).slice(0, 200));
+    return;
+  }
+  const at = new Date().toISOString();
+  const prices = data.prices || {};
+  const sources = data.sources || {};
+  const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+  const skipped = Array.isArray(data.skipped) ? data.skipped : [];
+  const apiErrors = Array.isArray(data.errors) ? data.errors : [];
+  let filled = 0;
+  for (const sku of Object.keys(prices)) {
+    const price = aiNum(prices[sku]);
+    if (price == null) continue;
+    const cap = state.db.captures[sku] || {};
+    delete cap.manualConfirmed;
+    delete cap.confirmedAt;
+    cap.util = {
+      price: price,
+      kind: 'official',
+      at: at,
+      account: '官方API',
+      source: sources[sku] || '',
+      title: '',
+      url: 'https://item.shop.example.com/' + sku + '.html'
+    };
+    cap.fail = null;
+    cap.updatedAt = at;
+    state.db.captures[sku] = cap;
+    filled++;
+  }
+  await saveDb();
+  renderAll();
+  const missing = Array.isArray(data.missing) ? data.missing : [];
+  let msg = '官方API采集完成：填入 ' + filled + ' 个 SKU，' + missing.length + ' 个无权限/无价';
+  if (accounts.length) msg += '（账号：' + accounts.join(' / ') + '）';
+  if (skipped.length) msg += '；有 ' + skipped.length + ' 个账号未就绪，缺 appSecret';
+  setToast(msg);
+  logLine('官方API采集：成功 ' + filled + ' 个，未覆盖 ' + missing.length + ' 个' + (missing.length ? '（' + missing.slice(0, 8).join(',') + (missing.length > 8 ? '…' : '') + '）' : ''));
+  if (accounts.length) logLine('官方API账号：' + accounts.join(' / '));
+  skipped.forEach((item) => logLine('官方API账号未启用：' + item));
+  apiErrors.slice(0, 6).forEach((item) => logLine('官方API提示：' + item));
+  checkApiBridge();
+}
+
+// ---------------- 第二轨道结束 ----------------
+
 async function finishRun() {
   const run = state.run;
   state.running = false;
@@ -1616,11 +2465,13 @@ async function finishRun() {
   state.pending = null;
   if (run) {
     try {
-      if (!state.db.settings.keepTab && run.runnerTabId != null) {
+      if (run.runnerWindowId != null) {
+        await chrome.windows.remove(run.runnerWindowId);
+      } else if (!state.db.settings.keepTab && run.runnerTabId != null) {
         await chrome.tabs.remove(run.runnerTabId);
       }
     } catch (e) {
-      // 标签页可能已被关闭
+      // 标签页/窗口可能已被关闭
     }
     state.db.lastRun = {
       identity: run.identity,
@@ -1665,13 +2516,52 @@ async function runLoop() {
     logLine('[' + (run.idx + 1) + '/' + run.tasks.length + '] 打开 ' + task.sku);
 
     let result;
+    let shot = null;
+    let aiInfo = null;
     try {
-      await chrome.tabs.update(run.runnerTabId, { url: task.url });
-      result = await waitForResult(task.sku, PRICE_TIMEOUT_MS);
+      if (run.foreground) {
+        const captured = await foregroundCapture(run, task);
+        result = captured.result;
+        shot = captured.shot;
+      } else {
+        state.pendingBuffer = null;
+        await chrome.tabs.update(run.runnerTabId, { url: task.url });
+        result = await waitForResult(task.sku, PRICE_TIMEOUT_MS);
+      }
     } catch (e) {
       result = { ok: false, reason: '打开页面失败：' + errText(e) };
     }
     if (state.stopped) break;
+
+    if (result && result.priceChanges && result.priceChanges.length) {
+      logLine(
+        '  ↻ 页面价格刷新：' +
+        result.priceChanges.map((x) => fmtMoney(x.from) + '→' + fmtMoney(x.to)).join(' / ') +
+        '（已采用最新一次读数）'
+      );
+    }
+
+    if (shot) {
+      try {
+        const analysis = await analyzeShot(task, run.identity, result, shot);
+        aiInfo = analysis ? analysis.info : null;
+        if (analysis && analysis.pick != null) {
+          result = {
+            ok: true,
+            hand: { price: analysis.pick, kind: 'ai', label: 'AI识别' },
+            account: result && result.account,
+            url: task.url,
+            title: (result && result.title) || '',
+            ai: true
+          };
+          logLine('  AI 识图补价：' + task.sku + ' → ' + fmtMoney(analysis.pick));
+        } else if (aiInfo && aiInfo.mismatch) {
+          logLine('  ⚠ DOM/AI 价格不一致：DOM ' + fmtMoney(aiInfo.mismatch.dom) + ' / AI ' + fmtMoney(aiInfo.mismatch.ai));
+        }
+      } catch (e) {
+        logLine('  截图/AI 处理失败：' + errText(e));
+      }
+    }
 
     if (result && result.account && result.account.nickname) {
       if (!run.accountLabel) {
@@ -1689,76 +2579,44 @@ async function runLoop() {
       }
     }
 
-    let finalResult = result;
     let finalPick = null;
     let offMeta = null;
     const threshold = thresholdFor(task, run.identity);
     if (result && result.ok) {
-      const samples = [];
       const firstPick = pickPrice(run.identity, result, task.frontPrice);
-      if (firstPick) samples.push({ price: firstPick.price, kind: firstPick.kind, result: result });
-      const totalTarget = Math.max(1, Math.min(5, Math.round(Number(settings.deviationRetries) || 3)));
-      if (firstPick && threshold != null && Math.abs(firstPick.price - threshold) > deviationLimitValue()) {
-        const limit = deviationLimitValue();
-        let tries = 0;
-        while (samples.length < totalTarget && tries < totalTarget + 2 && !state.stopped) {
-          tries++;
-          const last = samples[samples.length - 1];
-          const gap = Math.abs(last.price - threshold);
-          logLine(
-            '  ⚠ 价格 ' + fmtMoney(last.price) + ' 与阈值 ' + fmtMoney(threshold) + ' 相差 ' + fmtMoney(gap) +
-            '，超过 ' + fmtMoney(limit) + '，自动多采（' + samples.length + '/' + totalTarget + '）'
-          );
-          setToast('价格偏离阈值较大，自动多采 ' + samples.length + '/' + totalTarget);
-          await sleep(700 + randInt(0, 600));
-          const again = await recaptureTaskOnce(task);
-          if (!again || !again.ok) {
-            logLine('  ✗ 多采失败：' + ((again && again.reason) || '未知原因'));
-            break;
-          }
-          const p = pickPrice(run.identity, again, task.frontPrice);
-          if (!p) {
-            logLine('  ✗ 多采未取到合理价格');
-            break;
-          }
-          samples.push({ price: p.price, kind: p.kind, result: again });
-        }
-        if (samples.length) {
-          samples.sort((a, b) => Math.abs(a.price - threshold) - Math.abs(b.price - threshold));
-          const best = samples[0];
-          finalPick = { price: best.price, kind: best.kind };
-          finalResult = best.result;
-          const prices = samples.map((s) => s.price);
-          const diff = Math.abs(best.price - threshold);
-          offMeta = {
-            threshold: Number(threshold),
-            limit: limit,
-            confirmLimit: deviationConfirmLimitValue(),
-            attempts: prices.slice(0, 6),
-            needsConfirm: diff > deviationConfirmLimitValue(),
-            at: new Date().toISOString()
-          };
-          if (offMeta.needsConfirm) {
-            logLine(
-              '  ⚠ 已自动选值 ' + fmtMoney(best.price) + '（离阈值最近），仍与阈值相差 ' + fmtMoney(diff) +
-              '，超过 ' + fmtMoney(offMeta.confirmLimit) + '，已标记「建议人工确认/修改」'
-            );
-          } else {
-            logLine('  ✓ 复采完成，取最接近阈值的价格 ' + fmtMoney(best.price) + '（相差 ' + fmtMoney(diff) + '）');
-          }
-        }
-      } else if (firstPick) {
+      if (firstPick) {
         finalPick = firstPick;
+        // 只记录「偏离阈值」，不再自动多采几次挑一个最接近阈值的值
+        // （那样等于让程序猜一个"看起来合理"的价格，反而会掩盖真实读数）
+        if (threshold != null) {
+          const diff = Math.abs(firstPick.price - threshold);
+          if (diff > deviationLimitValue()) {
+            offMeta = {
+              threshold: Number(threshold),
+              limit: deviationLimitValue(),
+              confirmLimit: deviationConfirmLimitValue(),
+              attempts: [firstPick.price],
+              needsConfirm: diff > deviationConfirmLimitValue(),
+              at: new Date().toISOString()
+            };
+            logLine(
+              '  ⚠ 价格 ' + fmtMoney(firstPick.price) + ' 与阈值 ' + fmtMoney(threshold) + ' 相差 ' + fmtMoney(diff) +
+              (offMeta.needsConfirm ? '（已标记需人工确认）' : '（仅提示，不修改读数）')
+            );
+          }
+        }
       }
     }
+    const finalResult = result;
     const success = recordResult(task, run.identity, finalResult, finalPick ? { pick: finalPick, offThreshold: offMeta } : null);
     run.done = run.idx + 1;
     if (success) {
       run.ok++;
       run.consecutiveFails = 0;
       const cap = state.db.captures[task.sku];
+      if (cap && aiInfo) cap.ai = aiInfo;
       const info = cap && cap[run.identity];
-      logLine('  ✓ ' + (info ? fmtMoney(info.price) + '（' + kindLabel(info.kind) + '）' : '已采集') + (info && info.offThreshold ? (info.offThreshold.needsConfirm ? ' ⚠ 已选值，建议人工确认' : ' ⚠ 已多采取最接近值') : ''));
+      logLine('  ✓ ' + (info ? fmtMoney(info.price) + '（' + kindLabel(info.kind) + '）' : '已采集') + (info && info.offThreshold ? (info.offThreshold.needsConfirm ? ' ⚠ 已记录，建议人工确认' : ' ⚠ 偏离阈值，仅提示') : ''));
     } else {
       run.fail++;
       run.consecutiveFails = (run.consecutiveFails || 0) + 1;
@@ -1784,6 +2642,70 @@ async function runLoop() {
       await sleep(d * 1000);
     }
   }
+}
+
+// ---------------- 重采：先选账号 + 轨道 ----------------
+let rerunResolver = null;
+
+function defaultRerunChoice() {
+  const s = state.db.settings;
+  const identity = s.rerunRemember && s.rerunIdentity
+    ? s.rerunIdentity
+    : ((state.db.lastRun && state.db.lastRun.identity) || 'util');
+  let foreground;
+  if (s.rerunRemember && typeof s.rerunForeground === 'boolean') foreground = s.rerunForeground;
+  else foreground = s.patrolMode === 'foreground';
+  return { identity: identity === 'plus' ? 'plus' : 'util', foreground: !!foreground };
+}
+
+function openRerunDialog(opts) {
+  opts = opts || {};
+  if (!els.rerunDialog) return Promise.resolve(defaultRerunChoice());
+  const dflt = defaultRerunChoice();
+  const identity = opts.identity ? opts.identity : dflt.identity;
+  const foreground = typeof opts.foreground === 'boolean' ? opts.foreground : dflt.foreground;
+  els.rerunIdentity.value = identity === 'plus' ? 'plus' : 'util';
+  els.rerunTrack.value = foreground ? 'foreground' : 'background';
+  els.rerunRemember.checked = !!state.db.settings.rerunRemember;
+  els.rerunHint.textContent = opts.hint || '选择本次重采使用的账号和轨道。';
+  if (els.rerunDialog.open) {
+    // 已经有一个重采弹窗开着：先按取消处理上一个，再开新的
+    closeRerunDialog(null);
+  }
+  if (typeof els.rerunDialog.showModal === 'function') els.rerunDialog.showModal();
+  else els.rerunDialog.setAttribute('open', '');
+  return new Promise((resolve) => {
+    rerunResolver = resolve;
+  });
+}
+
+function closeRerunDialog(result) {
+  const resolve = rerunResolver;
+  rerunResolver = null;
+  try {
+    if (els.rerunDialog && els.rerunDialog.open) els.rerunDialog.close();
+  } catch (e) {
+    // 忽略
+  }
+  if (resolve) resolve(result);
+}
+
+function confirmRerunChoice() {
+  const identity = els.rerunIdentity.value === 'plus' ? 'plus' : 'util';
+  const foreground = els.rerunTrack.value === 'foreground';
+  const remember = !!els.rerunRemember.checked;
+  state.db.settings.rerunRemember = remember;
+  if (remember) {
+    state.db.settings.rerunIdentity = identity;
+    state.db.settings.rerunForeground = foreground;
+  }
+  saveDb();
+  closeRerunDialog({ identity: identity, foreground: foreground });
+}
+
+function startRerun(opts, choice) {
+  const runOpts = Object.assign({}, opts, { foreground: choice.foreground, noConfirm: true });
+  return startRun(choice.identity, runOpts);
 }
 
 async function startRun(identity, opts) {
@@ -1851,12 +2773,15 @@ async function startRun(identity, opts) {
   const avg = (Number(state.db.settings.delayMin) + Number(state.db.settings.delayMax)) / 2 || 4;
   const est = Math.max(1, Math.round((tasks.length * (avg + 6)) / 60));
   if (!opts.auto && !opts.noConfirm) {
+    const modeText = state.db.settings.patrolMode === 'foreground'
+      ? '前台小窗逐个打开商品页读取价格（每单约 10–20 秒，采集期间不要用电脑）'
+      : '后台标签页逐个打开商品页读取价格（不弹窗，可暂停/停止）';
     const ok = window.confirm(
       '开始【' + identityLabel + '】巡检\n\n' +
         '本次 SKU：' + tasks.length + ' 个\n' +
         '预计耗时：约 ' + est + ' 分钟\n' +
-        '采集方式：后台按节奏逐个打开商品页读取页面价格（不弹窗，可暂停/停止）\n\n' +
-        '请先确认：当前 Edge 登录的是' + (identity === 'util' ? '【普通/普惠】账号' : '【PLUS 会员】账号') + '，并且能正常打开电商平台商品页。\n\n' +
+        '采集方式：' + modeText + '\n\n' +
+        '请先确认：当前 ' + BROWSER_NAME + ' 登录的是' + (identity === 'util' ? '【普通/普惠】账号' : '【PLUS 会员】账号') + '，并且能正常打开电商平台商品页。\n\n' +
         '确定开始？'
     );
     if (!ok) {
@@ -1865,8 +2790,10 @@ async function startRun(identity, opts) {
     }
   } else if (opts.auto) {
     logLine('自动巡检模式：' + identityLabel + '，本次 ' + tasks.length + ' 个 SKU');
-  } else {
+  } else if (tasks.length === 1) {
     logLine('单条重采：' + tasks[0].sku + '（' + identityLabel + '）');
+  } else {
+    logLine('批量采集：' + tasks.length + ' 个 SKU（' + identityLabel + '）');
   }
 
   state.run = {
@@ -1879,7 +2806,9 @@ async function startRun(identity, opts) {
     consecutiveFails: 0,
     accountLabel: '',
     startedAt: new Date().toISOString(),
-    runnerTabId: null
+    runnerTabId: null,
+    runnerWindowId: null,
+    foreground: isForegroundRun(opts)
   };
   state.running = true;
   state.paused = false;
@@ -1891,8 +2820,10 @@ async function startRun(identity, opts) {
   renderAll();
   logLine('开始【' + identityLabel + '】巡检，共 ' + tasks.length + ' 个 SKU');
   try {
-    const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
-    state.run.runnerTabId = tab.id;
+    if (!state.run.foreground) {
+      const tab = await chrome.tabs.create({ url: 'about:blank', active: false });
+      state.run.runnerTabId = tab.id;
+    }
     await runLoop();
   } catch (e) {
     logLine('巡检异常终止：' + errText(e));
@@ -1927,10 +2858,10 @@ function buildCsvText() {
     if (cap.manualConfirmed) note = (note ? note + '；' : '') + '已人工确认';
     if (isOffline(row)) note = (note ? note + '；' : '') + '已移入下架库';
     if (util && util.offThreshold) {
-      note += (note ? '；' : '') + (util.offThreshold.confirmed ? '普惠价已人工确认' : (util.offThreshold.needsConfirm ? '普惠价已自动取最接近阈值的值，待人工确认' : '普惠价偏离阈值，已自动多采'));
+      note += (note ? '；' : '') + (util.offThreshold.confirmed ? '普惠价已人工确认' : (util.offThreshold.needsConfirm ? '普惠价偏离阈值，待人工确认' : '普惠价偏离阈值，仅提示'));
     }
     if (plus && plus.offThreshold) {
-      note += (note ? '；' : '') + (plus.offThreshold.confirmed ? '会员价已人工确认' : (plus.offThreshold.needsConfirm ? '会员价已自动取最接近阈值的值，待人工确认' : '会员价偏离阈值，已自动多采'));
+      note += (note ? '；' : '') + (plus.offThreshold.confirmed ? '会员价已人工确认' : (plus.offThreshold.needsConfirm ? '会员价偏离阈值，待人工确认' : '会员价偏离阈值，仅提示'));
     }
     const cells = [
       row.sheet,
@@ -1988,6 +2919,7 @@ function buildResultPayload(mode) {
     lastRun: state.db.lastRun || null,
     settings: state.db.settings,
     skuOverrides: state.db.skuOverrides,
+    baseOverride: state.db.baseOverride || null,
     reportRows: state.db.reportRows || [],
     offlineRows: state.db.offlineRows || [],
     offlineSkus: state.db.offlineSkus || [],
@@ -2077,10 +3009,15 @@ async function importDataFile(file) {
     state.db.offlineSkus = Array.from(set);
   }
   if (data.lastRun) state.db.lastRun = data.lastRun;
+  // 导出的 JSON 里带了基表的话，一并恢复到独立 key（截图不再恢复）
+  if (data.baseOverride && Array.isArray(data.baseOverride.sheets)) {
+    await saveBaseOverride(data.baseOverride);
+    await reloadBase();
+  }
   await saveDb();
   flattenRows();
   renderAll();
-  setToast('已导入巡检数据：' + capCount + ' 个 SKU');
+  setToast('已导入巡检数据：' + capCount + ' 个 SKU' + (data.baseOverride ? '（含基表）' : ''));
 }
 
 async function addSelectedToReport() {
@@ -2516,6 +3453,125 @@ function columnIndexFromRef(ref) {
   return index - 1;
 }
 
+// 简单公式求值：支持 数字、单元格引用（如 E58）、+ - * /、括号。
+// 用于 Excel 里把阈值写成公式、但保存时没有缓存计算结果的单元格（读取时为空白）。
+function evalSimpleFormula(text, getNum) {
+  const s = String(text || '').replace(/^=/, '').replace(/\s+/g, '');
+  let i = 0;
+  const len = s.length;
+  const peek = () => (i < len ? s[i] : '');
+  function parseExpr() {
+    let v = parseTerm();
+    while (peek() === '+' || peek() === '-') {
+      const op = s[i++];
+      const r = parseTerm();
+      v = op === '+' ? v + r : v - r;
+    }
+    return v;
+  }
+  function parseTerm() {
+    let v = parseFactor();
+    while (peek() === '*' || peek() === '/') {
+      const op = s[i++];
+      const r = parseFactor();
+      v = op === '*' ? v * r : v / r;
+    }
+    return v;
+  }
+  function parseFactor() {
+    if (peek() === '+') { i++; return parseFactor(); }
+    if (peek() === '-') { i++; return -parseFactor(); }
+    if (peek() === '(') { i++; const v = parseExpr(); if (peek() === ')') i++; return v; }
+    const num = /^\d+(?:\.\d+)?/.exec(s.slice(i));
+    if (num) { i += num[0].length; return Number(num[0]); }
+    const ref = /^\$?([A-Z]+)\$?(\d+)/.exec(s.slice(i));
+    if (ref) {
+      i += ref[0].length;
+      let col = 0;
+      for (const ch of ref[1]) col = col * 26 + (ch.charCodeAt(0) - 64);
+      return getNum(col - 1, Number(ref[2]));
+    }
+    i = len;
+    return NaN;
+  }
+  const v = parseExpr();
+  if (i < len) return NaN; // 不支持函数、跨表引用等，交给调用方回退
+  return v;
+}
+
+function summarizeBaseDiff(oldBase, newBase) {
+  const flat = (base) => {
+    const m = new Map();
+    for (const s of (base && base.sheets) || []) {
+      for (const r of s.rows || []) {
+        const sku = String(r.sku || '').trim();
+        if (sku) m.set(sku, r);
+      }
+    }
+    return m;
+  };
+  const a = flat(oldBase);
+  const b = flat(newBase);
+  const out = { added: 0, removed: 0, util: 0, plus: 0, front: 0, model: 0 };
+  for (const sku of b.keys()) if (!a.has(sku)) out.added++;
+  for (const sku of a.keys()) if (!b.has(sku)) out.removed++;
+  const sameNum = (x, y) => {
+    const p = Number(x), q = Number(y);
+    return (isFinite(p) || isFinite(q)) ? p === q : String(x || '') === String(y || '');
+  };
+  for (const [sku, r] of b) {
+    const o = a.get(sku);
+    if (!o) continue;
+    if (!sameNum(o.utilMin, r.utilMin)) out.util++;
+    if (!sameNum(o.plusMin, r.plusMin)) out.plus++;
+    if (!sameNum(o.frontPrice, r.frontPrice)) out.front++;
+    if (String(o.model || '') !== String(r.model || '')) out.model++;
+  }
+  return out;
+}
+
+function baseDiffList(oldBase, newBase, limit) {
+  const flat = (base) => {
+    const m = new Map();
+    for (const s of (base && base.sheets) || []) {
+      for (const r of s.rows || []) {
+        const sku = String(r.sku || '').trim();
+        if (sku) m.set(sku, r);
+      }
+    }
+    return m;
+  };
+  const a = flat(oldBase);
+  const b = flat(newBase);
+  const out = [];
+  const FIELDS = [['utilMin', '普惠阈值'], ['plusMin', '会员阈值'], ['frontPrice', '前台价'], ['model', '型号'], ['package', '套餐']];
+  for (const [sku, r] of b) {
+    const o = a.get(sku);
+    if (!o) {
+      out.push({ sku: sku, label: '新增 SKU', from: '', to: r.model || '' });
+      continue;
+    }
+    for (const [f, label] of FIELDS) {
+      const x = o[f], y = r[f];
+      const p = Number(x), q = Number(y);
+      const same = (isFinite(p) || isFinite(q)) ? p === q : String(x || '') === String(y || '');
+      if (!same) out.push({ sku: sku, label: label, from: x, to: y });
+    }
+  }
+  return { total: out.length, sample: out.slice(0, limit || 10) };
+}
+
+function baseDiffText(d) {
+  const parts = [];
+  if (d.added) parts.push('新增 SKU ' + d.added + ' 个');
+  if (d.removed) parts.push('移除 SKU ' + d.removed + ' 个');
+  if (d.util) parts.push('普惠阈值 ' + d.util + ' 处');
+  if (d.plus) parts.push('会员阈值 ' + d.plus + ' 处');
+  if (d.front) parts.push('前台价 ' + d.front + ' 处');
+  if (d.model) parts.push('型号 ' + d.model + ' 处');
+  return parts.length ? parts.join('、') : '与当前基表完全一致（没有变化）';
+}
+
 async function parseXlsxBase(file) {
   const buffer = await file.arrayBuffer();
   const zip = await readZipEntries(buffer);
@@ -2548,6 +3604,7 @@ async function parseXlsxBase(file) {
       continue;
     }
     const grid = [];
+    const formulas = new Map();
     for (const rowEl of sheetXml.getElementsByTagNameNS('*', 'row')) {
       const rowNumber = Number(rowEl.getAttribute('r')) || grid.length + 1;
       const cells = [];
@@ -2564,9 +3621,33 @@ async function parseXlsxBase(file) {
           if (v) value = v.textContent;
           if (type === 's' && value != null) value = shared[Number(value)] || '';
         }
+        const fEl = cellEl.getElementsByTagNameNS('*', 'f')[0];
+        if (fEl && fEl.textContent) formulas.set(col + '|' + rowNumber, fEl.textContent);
         cells[col] = value;
       }
       grid[rowNumber - 1] = cells;
+    }
+    // 计算简单公式（如阈值写成 =E58-1060 的情况）；不支持的公式保留空白
+    if (formulas.size) {
+      const resolving = new Set();
+      const cellNum = (col, rowNum) => {
+        const key = col + '|' + rowNum;
+        const rowArr = grid[rowNum - 1] || [];
+        if (formulas.has(key) && !resolving.has(key)) {
+          const cached = rowArr[col];
+          if (cached == null || cached === '') {
+            resolving.add(key);
+            const n = evalSimpleFormula(formulas.get(key), (c, r) => cellNum(c, r));
+            resolving.delete(key);
+            if (isFinite(n)) rowArr[col] = String(n);
+          }
+        }
+        return xlsxToNumber(rowArr[col]);
+      };
+      for (const key of Array.from(formulas.keys())) {
+        const parts = key.split('|');
+        cellNum(Number(parts[0]), Number(parts[1]));
+      }
     }
     const headerCells = grid[0] || [];
     const mapping = detectXlsxColumns(headerCells);
@@ -2610,7 +3691,7 @@ async function parseXlsxBase(file) {
       rowCount: deduped.rows.length,
       withSku: withSku,
       missingSku: deduped.rows.length - withSku,
-      deduped: sheet.deduped != null ? sheet.deduped : deduped.dropped,
+      deduped: deduped.dropped,
       columns: mapping
     });
   }
@@ -2642,33 +3723,55 @@ async function importBaseFile(file, options) {
       return;
     }
   }
+  const prevBase = state.base;
+  const summary = summarizeBaseDiff(prevBase, data);
+  const summaryText = baseDiffText(summary);
+  const detail = baseDiffList(prevBase, data, 12);
   if (!opts.skipConfirm) {
     const ok = window.confirm(
       '导入基表：' + file.name + '\n\n' +
         '类目：' + data.sheets.length + ' 个\n' +
         '行数：' + data.totalRows + ' 行（其中 ' + data.totalWithSku + ' 行有 SKU）\n' +
+        '与当前基表对比：' + summaryText + '\n' +
         '已按 SKU 去重，重复 SKU 保留最后一条数据。\n\n' +
         '会覆盖当前使用的基表（已采集的价格按 SKU 保留）。确定导入？'
     );
     if (!ok) return;
   }
-  state.db.baseOverride = data;
-  await saveDb();
+  await saveBaseOverride(data);
   state.base = data;
   flattenRows();
   renderAll();
-  setToast('基表已导入：' + data.sheets.length + ' 个类目 · ' + data.totalRows + ' 行 · ' + data.totalWithSku + ' 行有 SKU');
+  const toastText = '基表已导入：' + data.sheets.length + ' 个类目 · ' + data.totalRows + ' 行 · ' + data.totalWithSku + ' 行有 SKU；' + summaryText;
+  setToast(toastText, 8000);
+  logLine('导入基表：' + file.name + '；' + summaryText);
+  if (!opts.skipConfirm) {
+    if (detail.total) {
+      const lines = detail.sample.map((d) => '· ' + d.sku + '（' + d.label + '）：' + (d.from == null || d.from === '' ? '空' : d.from) + ' → ' + (d.to == null || d.to === '' ? '空' : d.to));
+      window.alert(
+        '基表已导入并生效。\n\n' + summaryText + '\n\n' +
+          (detail.total > detail.sample.length ? '前 ' + detail.sample.length + ' 条变化：\n' : '变化明细：\n') +
+          lines.join('\n')
+      );
+    } else {
+      window.alert(
+        '基表已导入，但与当前基表完全一致：没有阈值 / 价格 / SKU 变化。\n\n' +
+          '如果你刚在 Excel 里改过阈值，请确认已经保存（Ctrl+S）后再导入；\n' +
+          '如果只改了「当前价格」列，插件不会把它当成阈值（当前价只来自采集）。'
+      );
+    }
+  }
 }
 
 
 async function resetBase() {
+  await refreshBaseFromStorage();
   if (!state.db.baseOverride) {
     setToast('当前已经是内置基表');
     return;
   }
   if (!window.confirm('恢复为扩展内置的基表？导入的基表会被丢弃（已采集的价格保留）。')) return;
-  state.db.baseOverride = null;
-  await saveDb();
+  await saveBaseOverride(null);
   await reloadBase();
   renderAll();
   setToast('已恢复内置基表');
@@ -2679,11 +3782,16 @@ async function purgeCaptures() {
     setToast('巡检进行中，先停止再清空');
     return;
   }
-  if (!window.confirm('清空所有已采集的价格？（只清采集结果，不影响基表和补录的 SKU）')) return;
+  if (!window.confirm('清空所有已采集的价格？\n\n只清采集结果，不影响基表和补录的 SKU。\n清空前会自动下载一份 JSON 备份到「下载」文件夹，需要时可「导入数据」恢复。')) return;
+  try {
+    exportJson(); // 先自动备份，避免误点清空后数据找不回
+  } catch (e) {
+    // 备份失败不阻止清空，但提示
+  }
   state.db.captures = {};
   await saveDb();
   renderAll();
-  setToast('已清空采集结果');
+  setToast('已清空采集结果（清空前已自动下载 JSON 备份）');
 }
 
 // ---------------- 设置 ----------------
@@ -2708,12 +3816,19 @@ function openSettings() {
   els.setScope.value = s.scope || 'all';
   els.setKeepTab.checked = !!s.keepTab;
   els.setDeviationLimit.value = String(s.deviationLimit != null ? s.deviationLimit : 500);
-  els.setDeviationRetries.value = String(s.deviationRetries != null ? s.deviationRetries : 3);
   els.setDeviationConfirm.value = String(s.deviationConfirmLimit != null ? s.deviationConfirmLimit : 1500);
   els.setPreviewDelay.value = String(s.previewDelayMs != null ? s.previewDelayMs : 1000);
+  els.setPatrolMode.value = s.patrolMode === 'background' ? 'background' : 'foreground';
+  els.setAiEnabled.checked = s.aiEnabled !== false;
+  els.setAiEndpoint.value = s.aiEndpoint || 'https://gateway.example.com/v1';
+  els.setAiModel.value = s.aiModel || 'deepseek-flash';
+  els.setAiKey.value = s.aiApiKey || '';
+  els.setAiVerifyMode.value = s.aiVerifyMode || 'fallback';
+  els.setOfficialApiUrl.value = s.officialApiUrl || 'http://127.0.0.1:18765';
+  loadApiAccountInfo().catch(() => {});
   const latest = latestRawCapture();
   els.debugBox.textContent = latest
-    ? JSON.stringify({ sku: latest.sku, at: latest.raw.at, identity: latest.raw.identity, main: latest.raw.main, plus: latest.raw.plus, hand: latest.raw.hand, candidates: latest.raw.candidates }, null, 2)
+    ? JSON.stringify({ sku: latest.sku, at: latest.raw.at, identity: latest.raw.identity, source: latest.raw.source, main: latest.raw.main, plus: latest.raw.plus, hand: latest.raw.hand, priceChanges: latest.raw.priceChanges, candidates: latest.raw.candidates }, null, 2)
     : '暂无';
   if (typeof els.settingsDialog.showModal === 'function') els.settingsDialog.showModal();
   else els.settingsDialog.setAttribute('open', '');
@@ -2725,6 +3840,7 @@ async function saveSettings() {
   let delayMax = Math.max(delayMin, Math.floor(Number(els.setDelayMax.value) || 6));
   delayMin = Math.min(delayMin, 60);
   delayMax = Math.min(delayMax, 120);
+  const prev = state.db.settings || {};
   state.db.settings = {
     batchSize: batch,
     delayMin: delayMin,
@@ -2733,11 +3849,24 @@ async function saveSettings() {
     scope: els.setScope.value === 'current' ? 'current' : 'all',
     keepTab: !!els.setKeepTab.checked,
     deviationLimit: Math.max(0, Math.floor(Number(els.setDeviationLimit.value) || 0)),
-    deviationRetries: Math.max(1, Math.min(5, Math.floor(Number(els.setDeviationRetries.value) || 3))),
     deviationConfirmLimit: Math.max(0, Math.floor(Number(els.setDeviationConfirm.value) || 0)),
-    previewDelayMs: Math.max(300, Math.min(5000, Math.floor(Number(els.setPreviewDelay.value) || 1000)))
+    previewDelayMs: Math.max(300, Math.min(5000, Math.floor(Number(els.setPreviewDelay.value) || 1000))),
+    patrolMode: els.setPatrolMode.value === 'background' ? 'background' : 'foreground',
+    aiEnabled: !!els.setAiEnabled.checked,
+    aiEndpoint: (els.setAiEndpoint.value || '').trim() || 'https://gateway.example.com/v1',
+    aiModel: (els.setAiModel.value || '').trim() || 'deepseek-flash',
+    aiApiKey: (els.setAiKey.value || '').trim(),
+    aiVerifyMode: ['off', 'fallback', 'all'].indexOf(els.setAiVerifyMode.value) >= 0 ? els.setAiVerifyMode.value : 'fallback',
+    officialApiUrl: (els.setOfficialApiUrl.value || '').trim() || 'http://127.0.0.1:18765',
+    // 保留「重采默认账号/轨道」选择
+    rerunRemember: !!prev.rerunRemember,
+    rerunIdentity: prev.rerunIdentity || '',
+    rerunForeground: typeof prev.rerunForeground === 'boolean' ? prev.rerunForeground : null
   };
   await saveDb();
+  applyTrackSelectionUI();
+  updateAiStatusChip();
+  updateApiStatusChip();
   renderRunUI();
   setToast('设置已保存');
 }
@@ -2747,7 +3876,19 @@ function currentEffectiveBase() {
   return state.db.baseOverride || state.base;
 }
 
-function openBaseManager() {
+// 打开「管理基表」前先从存储里重新读一次基表，避免旧标签页拿着过期状态把新基表覆盖掉
+async function refreshBaseFromStorage() {
+  try {
+    const got = await chrome.storage.local.get(BASE_KEY);
+    state.db.baseOverride = (got && got[BASE_KEY]) || null;
+  } catch (e) {
+    // 读不出来就沿用内存里的
+  }
+  await reloadBase();
+}
+
+async function openBaseManager() {
+  await refreshBaseFromStorage();
   const base = currentEffectiveBase();
   if (!base || !Array.isArray(base.sheets)) {
     setToast('基表还没加载好');
@@ -2976,10 +4117,10 @@ async function saveBaseManager() {
   draft.source = '手动管理';
   draft.duplicates = {};
   state.db.baseOverride = draft;
-  await saveDb();
+  await saveBaseOverride(draft);
   await reloadBase();
   renderAll();
-  setToast('基表已保存：' + draft.sheets.length + ' 个类目 · ' + total + ' 行 · ' + withSku + ' 行有 SKU');
+  setToast('基表已保存：' + draft.sheets.length + ' 个类目 · ' + total + ' 行 · ' + withSku + ' 行有 SKU（已保存到本机）');
   renderBaseManager();
 }
 
@@ -2995,8 +4136,12 @@ function setupRuntimeListeners() {
   chrome.runtime.onMessage.addListener((msg, sender) => {
     if (!msg || msg.type !== 'ITEM_PRICE_RESULT') return;
     const run = state.run;
-    if (!run || !state.pending) return;
+    if (!run) return;
     if (!sender || !sender.tab || sender.tab.id !== run.runnerTabId) return;
+    if (!state.pending) {
+      state.pendingBuffer = { tabId: sender.tab.id, msg: msg, at: Date.now() };
+      return;
+    }
     if (msg.sku !== state.pending.sku) return;
     const p = state.pending;
     p.resolve(msg);
@@ -3022,9 +4167,63 @@ function setupRuntimeListeners() {
       logLine('采集用的后台标签页被关闭，巡检停止');
     }
   });
+
+  // 多标签页同步：基表单独存 key，别的标签页改了基表时这里跟着更新，
+  // 避免"两个工作台同时开着、旧标签页把新基表覆盖回去"。
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || state.running) return;
+    const change = changes[BASE_KEY];
+    if (!change) return;
+    const next = change.newValue || null;
+    const cur = state.db && state.db.baseOverride ? state.db.baseOverride : null;
+    // 同一个页面自己写入时 storage 读回来的键顺序可能不同，用稳定序列化避免误判为“其他标签页更新”
+    if (stableStringify(next) === stableStringify(cur)) return;
+    state.db.baseOverride = next;
+    reloadBase()
+      .then(() => {
+        flattenRows();
+        renderAll();
+        setToast(next ? '基表已在其他工作台标签页更新，已同步' : '基表已恢复为内置（其他标签页操作），已同步');
+      })
+      .catch(() => {});
+  });
 }
 
 function bindEvents() {
+  document.querySelectorAll('.trackOpt').forEach((btn) => {
+    btn.addEventListener('click', () => setTrack(btn.dataset.track).catch(() => {}));
+  });
+  els.aiBtn.addEventListener('click', () => {
+    openSettings();
+    setTimeout(() => {
+      if (els.setAiKey) els.setAiKey.scrollIntoView({ block: 'center' });
+    }, 80);
+  });
+  els.aiTestBtn.addEventListener('click', () => testAiConnection().catch(() => {}));
+  els.apiAddBtn.addEventListener('click', () => addApiAccountRow());
+  els.apiRefreshBtn.addEventListener('click', () => loadApiAccountInfo().catch(() => {}));
+  els.apiAccountList.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('button[data-api-action]');
+    if (!btn) return;
+    const row = btn.closest('.apiRow');
+    if (!row) return;
+    saveApiAccountRow(row, btn.dataset.apiAction === 'test').catch(() => {});
+  });
+  els.aiStatusChip.addEventListener('click', () => {
+    openSettings();
+    setTimeout(() => {
+      if (els.setAiKey) els.setAiKey.scrollIntoView({ block: 'center' });
+    }, 80);
+  });
+  els.apiStatusChip.addEventListener('click', () => {
+    if (state.apiStatus && state.apiStatus.ok) {
+      setToast('官方API账号：' + (state.apiStatus.accounts || []).join(' / '));
+    } else {
+      checkApiBridge().then(() => setToast('官方API 未连接：确认 巡检插件-双轨版\\启动API桥.py 正在运行（开机已自启）'));
+    }
+  });
+  els.runOfficialBtn.addEventListener('click', () => runOfficialApi().catch((e) => setToast('官方API采集失败：' + errText(e))));
+
   els.runUtilBtn.addEventListener('click', () => startRun('util'));
   els.runPlusBtn.addEventListener('click', () => startRun('plus'));
   els.multiRerunBtn.addEventListener('click', () => {
@@ -3037,13 +4236,64 @@ function bindEvents() {
       setToast('先勾选要重采的行');
       return;
     }
-    const identity = (state.db.lastRun && state.db.lastRun.identity) || 'util';
-    const label = identity === 'util' ? '普惠账号' : 'PLUS 会员账号';
-    if (!window.confirm('按【' + label + '】身份重采选中的 ' + skus.length + ' 个 SKU？')) return;
-    startRun(identity, { skus: skus, noConfirm: true }).catch(() => {});
+    // 预选身份：如果选中的手动改价都在同一列，就预选那个身份；否则用上次重采/巡检身份
+    let anyUtilManual = false;
+    let anyPlusManual = false;
+    let noManual = 0;
+    for (const sku of skus) {
+      const cap = state.db.captures[sku];
+      const manualPlus = !!(cap && cap.plus && cap.plus.kind === 'manual');
+      const manualUtil = !!(cap && cap.util && cap.util.kind === 'manual');
+      if (manualPlus) anyPlusManual = true;
+      if (manualUtil) anyUtilManual = true;
+      if (!manualPlus && !manualUtil) noManual++;
+    }
+    let prefill;
+    if (anyPlusManual && !anyUtilManual) prefill = 'plus';
+    else if (anyUtilManual && !anyPlusManual) prefill = 'util';
+    else prefill = defaultRerunChoice().identity;
+    openRerunDialog({
+      identity: prefill,
+      hint: '重采选中的 ' + skus.length + ' 个 SKU（其中未改价 ' + noManual + ' 个）\n请选择用哪个账号、哪条轨道采集。'
+    }).then((choice) => {
+      if (!choice) return;
+      startRerun({ skus: skus }, choice).catch(() => {});
+    });
   });
   els.tabWorkbench.addEventListener('click', () => switchView('workbench'));
   els.tabOverview.addEventListener('click', () => switchView('overview'));
+  els.tabCompare.addEventListener('click', () => switchView('compare'));
+  els.cmpCollectBtn.addEventListener('click', () => {
+    if (state.running) {
+      setToast('已有巡检在进行中');
+      return;
+    }
+    const info = compareSkuList();
+    if (!info.skus.length) {
+      setToast('没有可采集的比价 SKU');
+      return;
+    }
+    openRerunDialog({
+      hint: '一键采集比价产品：' + info.groups + ' 组同款 / ' + info.skus.length + ' 个 SKU（两个店铺都算）。\n' +
+        '请选择用哪个账号（普惠 / 会员）和哪条轨道采集；选中账号后请确认浏览器当前登录的就是该账号。'
+    }).then((choice) => {
+      if (!choice) return;
+      startRerun({ skus: info.skus }, choice).catch(() => {});
+    });
+  });
+  els.cmpFilterAll.addEventListener('click', () => {
+    state.compareFilter = 'all';
+    renderCompare();
+  });
+  els.cmpFilterDiff.addEventListener('click', () => {
+    state.compareFilter = 'diff';
+    renderCompare();
+  });
+  els.cmpFilterMissing.addEventListener('click', () => {
+    state.compareFilter = 'missing';
+    renderCompare();
+  });
+  els.cmpExportBtn.addEventListener('click', exportCompareCsv);
   els.ovClearFilterBtn.addEventListener('click', () => {
     state.ovFilter = { key: 'all', sheet: '全部' };
     renderAll();
@@ -3123,6 +4373,18 @@ function bindEvents() {
     e.preventDefault();
     els.settingsDialog.close();
   });
+  els.rerunStart.addEventListener('click', (e) => {
+    e.preventDefault();
+    confirmRerunChoice();
+  });
+  els.rerunCancel.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeRerunDialog(null);
+  });
+  els.rerunDialog.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeRerunDialog(null);
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && previewState.winId != null && !previewState.pinned) closePreviewWindow();
   });
@@ -3166,7 +4428,301 @@ async function autoRunBoot() {
   }
 }
 
+// ---------------- 双轨状态：AI / 官方API ----------------
+function updateAiStatusChip() {
+  const chip = els.aiStatusChip;
+  if (!chip) return;
+  const s = state.db && state.db.settings;
+  const ready = !!(s && s.aiEnabled && s.aiApiKey && s.aiEndpoint);
+  chip.className = 'chip ' + (ready ? 'ok' : 'warn');
+  chip.textContent = ready ? ('AI 已就绪 · ' + (s.aiModel || 'deepseek-flash')) : 'AI 未配置（点此设置）';
+  chip.title = ready ? ('接口：' + s.aiEndpoint + '；点击打开 AI 设置') : '点击打开设置填写 AI Key';
+}
+
+function updateApiStatusChip() {
+  const chip = els.apiStatusChip;
+  if (!chip) return;
+  const st = state.apiStatus;
+  if (!st) {
+    chip.className = 'chip warn';
+    chip.textContent = '官方API 未检测（点此重试）';
+    return;
+  }
+  if (st.ok) {
+    const n = Array.isArray(st.accounts) ? st.accounts.length : 0;
+    chip.className = 'chip ok';
+    chip.textContent = '官方API 已连接 · ' + n + ' 个账号';
+    chip.title = '账号：' + (st.accounts || []).join(' / ') + ((st.skipped && st.skipped.length) ? '\n未启用：' + st.skipped.join('；') : '');
+  } else {
+    chip.className = 'chip warn';
+    chip.textContent = '官方API 未启动（点此检测）';
+    chip.title = st.error || '请运行 巡检插件-双轨版\\启动API桥.py';
+  }
+}
+
+async function checkApiBridge() {
+  const s = state.db && state.db.settings;
+  const base = String((s && s.officialApiUrl) || 'http://127.0.0.1:18765').replace(/\/+$/, '');
+  try {
+    const res = await fetch(base + '/healthz', { method: 'GET' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    state.apiStatus = { ok: true, accounts: data.accounts || [], skipped: data.skipped || [], initErrors: data.init_errors || [] };
+  } catch (e) {
+    state.apiStatus = { ok: false, error: errText(e) };
+  }
+  updateApiStatusChip();
+}
+
+async function testAiConnection() {
+  const s = state.db.settings;
+  const endpoint = String(s.aiEndpoint || '').replace(/\/+$/, '');
+  if (!endpoint || !s.aiApiKey) {
+    setToast('AI 未配置：先把接口和 Key 填上');
+    return;
+  }
+  setToast('正在测试 AI 连接…');
+  try {
+    const res = await fetch(endpoint + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.aiApiKey },
+      body: JSON.stringify({
+        model: s.aiModel || 'deepseek-flash',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: '只回复两个字符：OK' }]
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const reply = String((((data.choices || [])[0] || {}).message || {}).content || '').trim();
+    setToast('AI 连接正常（' + (s.aiModel || '') + '）：' + (reply.slice(0, 20) || '已返回'));
+  } catch (e) {
+    setToast('AI 连接失败：' + errText(e));
+  }
+  updateAiStatusChip();
+}
+
+// ---------------- 官方API账号（在设置里直接填写/保存） ----------------
+function officialApiBase() {
+  return String((state.db.settings && state.db.settings.officialApiUrl) || 'http://127.0.0.1:18765').replace(/\/+$/, '');
+}
+
+// 用基表里第一个「大家电」SKU 做保存后的自检
+function firstApiTestSku() {
+  const row = state.rows.find((r) => r.sheet === '大家电' && r.sku);
+  return row ? row.sku : (state.rows.find((r) => r.sku) || {}).sku || '';
+}
+
+function buildApiAccountRow(acc, index) {
+  const wrap = document.createElement('div');
+  wrap.className = 'apiGrid apiRow';
+  wrap.dataset.originalName = acc && acc.name ? acc.name : '';
+  const head = document.createElement('div');
+  head.className = 'apiRowHead';
+  const title = document.createElement('b');
+  title.textContent = '供应商 ' + index + (acc && acc.name ? '：' + acc.name : '（新增）');
+  head.appendChild(title);
+  const st = document.createElement('span');
+  st.className = 'apiTag';
+  if (!acc || !acc.name) {
+    st.classList.add('muted');
+    st.textContent = '待填写';
+  } else if (acc.loaded) {
+    st.classList.add('ok');
+    st.textContent = '已启用';
+  } else {
+    st.classList.add('warn');
+    st.textContent = '未启用（缺字段或被跳过）';
+  }
+  head.appendChild(st);
+  wrap.appendChild(head);
+
+  const fields = [
+    ['name', '账号名', 'text', acc && acc.name ? acc.name : '', '例如：品牌B大家电自营店'],
+    ['appKey', 'appKey', 'text', '', acc && acc.appKeyMasked ? '已保存：' + acc.appKeyMasked + '（留空不改）' : '电商平台开放平台的 appKey'],
+    ['appSecret', 'appSecret', 'password', '', acc && acc.hasSecret ? '已保存（留空不改，粘贴新值即替换）' : '32 位 appSecret'],
+    ['accessToken', 'accessToken', 'password', '', acc && acc.hasToken ? '已保存（尾号 …' + acc.accessTokenTail + '，留空不改）' : 'accessToken'],
+    ['refreshToken', 'refreshToken', 'password', '', '可选，留空不改'],
+    ['testSku', '测试 SKU', 'text', '', '可选：保存并测试时用这个 SKU']
+  ];
+  for (const item of fields) {
+    const key = item[0];
+    const lab = document.createElement('label');
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'apiLabel';
+    nameSpan.textContent = item[1];
+    const input = document.createElement('input');
+    input.className = 'input api-' + key;
+    input.type = item[2];
+    input.placeholder = item[4];
+    if (item[3]) input.value = item[3];
+    if (item[2] === 'password') input.autocomplete = 'new-password';
+    lab.appendChild(nameSpan);
+    lab.appendChild(input);
+    wrap.appendChild(lab);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'apiActions';
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn ghost';
+  saveBtn.dataset.apiAction = 'save';
+  saveBtn.textContent = '保存';
+  const testBtn = document.createElement('button');
+  testBtn.type = 'button';
+  testBtn.className = 'btn ghost';
+  testBtn.dataset.apiAction = 'test';
+  testBtn.textContent = '保存并测试';
+  actions.appendChild(saveBtn);
+  actions.appendChild(testBtn);
+  wrap.appendChild(actions);
+  return wrap;
+}
+
+function addApiAccountRow() {
+  if (!els.apiAccountList) return;
+  const index = els.apiAccountList.querySelectorAll('.apiRow').length + 1;
+  const row = buildApiAccountRow(null, index);
+  els.apiAccountList.appendChild(row);
+  const nameInput = row.querySelector('.api-name');
+  if (nameInput) nameInput.focus();
+  if (row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+}
+
+let apiAccountSeq = 0;
+
+async function loadApiAccountInfo() {
+  if (!els.apiAccountList) return;
+  const seq = ++apiAccountSeq;
+  const base = officialApiBase();
+  els.apiAccountList.textContent = '';
+  if (els.apiAccountInfo) els.apiAccountInfo.textContent = '';
+  try {
+    const res = await fetch(base + '/api/accounts', { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    if (seq !== apiAccountSeq) return;
+    const config = data.config || [];
+    if (!config.length) {
+      const empty = document.createElement('div');
+      empty.className = 'apiAccountInfo';
+      empty.textContent = '还没有 API 账号，点下面「+ 新增供应商账号」填写 appKey / appSecret / accessToken。';
+      els.apiAccountList.appendChild(empty);
+    } else {
+      config.forEach((acc, i) => els.apiAccountList.appendChild(buildApiAccountRow(acc, i + 1)));
+    }
+    if (els.apiAccountInfo) {
+      const loaded = (data.accounts || []).join(' / ') || '无';
+      let info = '桥已连接；已启用账号：' + loaded;
+      if (data.skipped && data.skipped.length) info += '；跳过：' + data.skipped.join('；');
+      if (data.init_errors && data.init_errors.length) info += '；提示：' + data.init_errors.join('；');
+      els.apiAccountInfo.textContent = info;
+    }
+  } catch (e) {
+    if (seq !== apiAccountSeq) return;
+    els.apiAccountList.appendChild(buildApiAccountRow(null, 1));
+    if (els.apiAccountInfo) els.apiAccountInfo.textContent = 'API 桥未连接：' + errText(e) + '（确认“启动API桥.py”在运行）';
+  }
+}
+
+function apiRowValues(row) {
+  const v = (cls) => {
+    const el = row.querySelector('.' + cls);
+    return el ? String(el.value || '').trim() : '';
+  };
+  return {
+    originalName: row.dataset.originalName || '',
+    name: v('api-name'),
+    appKey: v('api-appKey'),
+    appSecret: v('api-appSecret'),
+    accessToken: v('api-accessToken'),
+    refreshToken: v('api-refreshToken'),
+    testSku: v('api-testSku')
+  };
+}
+
+async function saveApiAccountRow(row, withTest) {
+  const base = officialApiBase();
+  const vals = apiRowValues(row);
+  if (!vals.originalName && (!vals.appKey || !vals.appSecret || !vals.accessToken)) {
+    setToast('新增供应商账号需要填完整的账号名 / appKey / appSecret / accessToken');
+    return;
+  }
+  if (vals.originalName && !vals.appKey && !vals.appSecret && !vals.accessToken && !vals.refreshToken && (!vals.name || vals.name === vals.originalName)) {
+    setToast('没有要保存的内容（留空的字段保持原值）');
+    return;
+  }
+  const payload = {
+    originalName: vals.originalName,
+    name: vals.name || vals.originalName,
+    appKey: vals.appKey,
+    appSecret: vals.appSecret,
+    accessToken: vals.accessToken,
+    refreshToken: vals.refreshToken,
+    identity: ''
+  };
+  const btn = row.querySelector('button[data-api-action="' + (withTest ? 'test' : 'save') + '"]');
+  if (btn) btn.disabled = true;
+  setToast('正在保存到 API 桥…');
+  try {
+    const res = await fetch(base + '/api/accounts/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    logLine('API 账号已更新：' + (data.accounts || []).join(' / '));
+    await checkApiBridge();
+    await loadApiAccountInfo();
+    if (!withTest) {
+      setToast('已保存并生效：' + (data.accounts || []).join(' / '));
+      return;
+    }
+    const sku = vals.testSku || firstApiTestSku();
+    if (!sku) {
+      setToast('已保存（基表里没有可测试的 SKU）');
+      return;
+    }
+    setToast('已保存，正在用 ' + sku + ' 试读价格…');
+    const t = await fetch(base + '/api/accounts/test?sku=' + encodeURIComponent(sku) + '&name=' + encodeURIComponent(vals.name || vals.originalName), { cache: 'no-store' });
+    const td = await t.json();
+    if (td.ok) {
+      setToast('保存成功：' + sku + ' 官方到手价 ¥' + td.price + '（' + (td.source || '') + '）');
+      logLine('API 自检通过：' + sku + ' → ' + td.price + '（' + (td.source || '') + '）');
+    } else {
+      const reason = (td.errors && td.errors[0]) || td.error || (td.missing && td.missing.length ? '该 SKU 没有返回价格（账号可能没这个 SKU 的权限）' : '未知原因');
+      setToast('已保存，但试读失败：' + String(reason).slice(0, 180));
+      logLine('API 自检失败：' + String(reason).slice(0, 300));
+    }
+  } catch (e) {
+    setToast('保存失败：' + errText(e) + '（确认 API 桥在运行）');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // ---------------- 初始化 ----------------
+// 兜底：脚本出异常时在页面上提示，而不是无声卡住
+window.addEventListener('error', (ev) => {
+  try {
+    const msg = (ev && ev.message) || '未知脚本错误';
+    const box = document.getElementById('pageErrorBox');
+    if (box) return;
+    const div = document.createElement('div');
+    div.id = 'pageErrorBox';
+    div.style.cssText = 'margin:12px 22px;padding:10px 14px;border:1px solid #ffccc7;background:#fff1f0;color:#a8071a;border-radius:8px;font-size:12px;line-height:1.6;';
+    div.textContent = '页面脚本错误：' + msg + '（按 F12 打开控制台可看详情，截图发我即可）';
+    document.body.insertBefore(div, document.body.firstChild);
+    console.error('page error:', ev && ev.error ? ev.error : msg);
+  } catch (e) {
+    // 忽略
+  }
+});
+window.addEventListener('unhandledrejection', (ev) => {
+  console.error('unhandled rejection:', ev && ev.reason);
+});
+
 async function init() {
   await loadDb();
   state.base = await loadBase();
@@ -3175,7 +4731,11 @@ async function init() {
   bindEvents();
   setupRuntimeListeners();
   applyTrackIdentity();
+  checkApiBridge();
   switchView('workbench');
+  if (state.baseUpgraded) {
+    setToast('内置基表已更新（' + (state.baseUpgraded.to ? fmtTime(state.baseUpgraded.to) : '最新版') + '），已下架 / 手动改价状态已保留', 6500);
+  }
   if (IS_AUTORUN) {
     await autoRunBoot();
   }
@@ -3184,7 +4744,7 @@ async function init() {
 init().catch((err) => {
   const box = document.createElement('div');
   box.style.cssText = 'margin:20px;padding:16px;border:1px solid #ffccc7;background:#fff1f0;color:#a8071a;border-radius:8px;font-size:13px;line-height:1.7;';
-  box.textContent = '工作台初始化失败：' + errText(err) + '\n请到 edge://extensions 重新加载扩展试试。';
+  box.textContent = '工作台初始化失败：' + errText(err) + '\n请到 ' + EXTENSIONS_URL + ' 重新加载扩展试试。';
   document.body.insertBefore(box, document.body.firstChild);
 });
 

@@ -1,17 +1,31 @@
 {
   "manifest_version": 3,
-  "name": "电商平台价格巡检工作台",
-  "version": "1.0.0",
-  "description": "按 SKU 巡检表，批量读取当前电商平台账号（普惠/PLUS 会员）的页面到手价，对照阈值并导出结果。数据只存本机。",
-  "permissions": ["storage", "tabs"],
-  "host_permissions": ["https://item.shop.example.com/*"],
+  "name": "电商平台价格巡检工作台 · 双轨版（后台/前台+AI）",
+  "version": "1.3.6",
+  "description": "双轨巡检：轨道①后台标签页；轨道②前台小窗+AI复核。有官方权限的SKU走官方API（支持多个供应商账号，设置页可保存）。只取当前商品价格区，AI截图不落盘；同品比价对比 3C店铺/大家电 同款不同 SKU 的到手价；内置基表自动合并「大家电新表」并保留已下架状态。",
+  "permissions": [
+    "storage",
+    "tabs",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://item.shop.example.com/*",
+    "http://127.0.0.1:18765/*",
+    "https://gateway.example.com/*",
+    "http://gateway.example.com/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://item.shop.example.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://item.shop.example.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
@@ -28,5 +42,6 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "short_name": "巡检双轨版"
 }

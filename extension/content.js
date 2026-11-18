@@ -1,33 +1,39 @@
-// 电商平台价格巡检 · 商品页取价脚本 v1.1
+// 电商平台价格巡检 · 商品页取价脚本 v2.1
 //
-// 在商品详情页(item.shop.example.com)读取页面已经渲染出来的价格：
-//   main  = 页面主价格（通常是电商平台价）
-//   plus  = PLUS 会员价（登录 PLUS 账号时页面会展示）
-//   hand  = 到手价（页面有「到手价/预估到手」标签时）
-//
-// v1.1 重点修复「第一次读到 5 这种不完整价格」：
-//   - 价格数字常被拆成多个节点/有动画，第一次可能只读到其中一位数字；
-//     现在会等价格稳定（连续两次取到同一个合理价格）再上报，最多等 20 秒；
-//   - 过滤「5折 / 5期 / 满5件 / 单数字片段」这类疑似价格；
-//   - 合理价格下限 30 元，低于下限的候选不参与选价。
+// 与 v1.x 的区别（针对「读到别的商品价格」的高错误率）：
+//   1. 不再全页扫描价格：优先取「首屏内、看得见、字号最大」的那个价格
+//      （电商平台商品页的到手价永远是大号红字，电商平台价是旁边的小号灰字）。
+//   2. 显式排除跨平台比价卡片 / 关联购买 / 推荐位 / 广告位（这些卡片里也有「到手价」字样，
+//      之前的版本因此把 76% 的会员价读成了别的商品的 8499 / 1999）。
+//   3. 只认页面上看得见的元素（有布局尺寸、不在隐藏抽屉里、在首屏内），
+//      后台标签页同样适用（后台标签页会完成布局，只是不绘制）。
+//   4. 数字被拆成多个节点时先拼回完整文本再解析，拒绝「56」这种小数片段。
+//   5. 上报时附带价格元素的位置和视口尺寸，供工作台按位置裁剪截图交给 AI 复核。
+//   6. v2.1：连续 3 次（约 1.5 秒）读数一致才算稳定；之后每 1.2 秒再复核一次（最多 4 次），
+//      以「页面最终刷新后的价格」为准，并把价格变化（priceChanges）一起上报。
 //
 // 工具只读页面 DOM，不点击、不提交、不额外发请求。
 (() => {
-  if (window.__jdPatrolItemV2) return;
-  window.__jdPatrolItemV2 = true;
+  if (window.__jdPatrolItemV3) return;
+  window.__jdPatrolItemV3 = true;
   if (location.hostname !== 'item.shop.example.com') return;
 
   const MIN_PLAUSIBLE_PRICE = 30;
   const MAX_WAIT_MS = 20000;
-  const STABLE_ROUNDS = 2;
+  const STABLE_ROUNDS = 3; // 连续 3 次（约 1.5 秒）读到同一个价格才算稳定
+  const MAX_FONT = 200;
+
+  // 这些模块里虽然也有「到手价」，但不是当前商品的价格
+  const EXCLUDE_CONTAINER =
+    /cross_platform|continuous-product|recommend|similar|guess|like-|maylike|also-?buy|rank|banner|advert|shop-?card|shopcard|promo-?card|promotion-?card|footprint|history-?item|compare-?card|price-?compare/i;
 
   const norm = (t) => (t || '').replace(/\s+/g, ' ').trim();
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   function classOf(el) {
     if (!el) return '';
-    const c = el.className;
-    return typeof c === 'string' ? c : (el.getAttribute && el.getAttribute('class')) || '';
+    const c = typeof el.className === 'string' ? el.className : (el.getAttribute && el.getAttribute('class')) || '';
+    return c || '';
   }
 
   function readCookie(name) {
@@ -54,20 +60,199 @@
     return m ? m[1] : '';
   }
 
-  function extractPrice(text, isPriceClass) {
-    const m = String(text || '').match(/[¥￥]\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)/);
-    if (m) {
-      const n = parseFloat(m[1].replace(/,/g, ''));
-      if (!isNaN(n) && n > 0) return n;
+  function isVisible(el) {
+    if (!el || !el.isConnected) return false;
+    let cs;
+    try {
+      cs = getComputedStyle(el);
+    } catch (e) {
+      return false;
     }
-    if (isPriceClass) {
-      const m2 = String(text || '').match(/^[^0-9]*([0-9][0-9,]*(?:\.[0-9]{1,2})?)/);
-      if (m2) {
-        const n = parseFloat(m2[1].replace(/,/g, ''));
-        if (!isNaN(n) && n > 0) return n;
+    if (!cs || cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity || 1) <= 0) return false;
+    // display:none 的祖先会让 offsetParent 为 null；fixed/sticky 例外
+    if (el.offsetParent === null) {
+      const pos = cs.position;
+      if (pos !== 'fixed' && pos !== 'sticky') {
+        const rr = el.getBoundingClientRect();
+        if (rr.width <= 0 || rr.height <= 0) return false;
       }
     }
-    return null;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  }
+
+  function inFirstScreen(r) {
+    const h = window.innerHeight || 900;
+    return r.top >= -30 && r.top < h;
+  }
+
+  function inExcludedContainer(el) {
+    let cur = el;
+    for (let i = 0; i < 10 && cur && cur !== document.body; i++) {
+      const tag = (cur.tagName || '').toLowerCase();
+      if (EXCLUDE_CONTAINER.test(classOf(cur) + ' ' + (cur.id || '') + ' ' + tag)) return true;
+      cur = cur.parentElement;
+    }
+    return false;
+  }
+
+  function fontOf(el) {
+    try {
+      const n = parseFloat(getComputedStyle(el).fontSize);
+      return isFinite(n) ? Math.min(MAX_FONT, n) : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  // 只接受「一个完整价格」的文本：
+  //   ¥15699 / 15,699 / 15699.00 / ¥8607.56
+  // 拒绝：56、5、.56、5折、5期、满5件、月供5、评价5
+  function parsePriceText(text) {
+    const s = norm(text);
+    if (!s || s.length > 24) return null;
+    if (/[折期件满减%人年星分]|白条|免息|定金|尾款|月供|评价|销量|已售|优惠|券后立减/.test(s)) return null;
+    const m = s.match(/^[¥￥]?\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s*[元起]?$/);
+    if (!m) return null;
+    const raw = m[1].replace(/,/g, '');
+    const n = parseFloat(raw);
+    if (!isFinite(n) || n < MIN_PLAUSIBLE_PRICE) return null;
+    const intPart = raw.split('.')[0].replace(/^0+/, '');
+    // 没有「¥」前缀时必须是 3 位以上整数，避免把 5 / 56 / .56 这种片段当价格
+    // （带「¥」的两位数是合法的「¥99」，但这类 SKU 在本基表里不存在，仍保留兜底）
+    if (intPart.length < 3 && !/[¥￥]/.test(s)) return null;
+    return n;
+  }
+
+  // 取元素附近（自己 + 前一个兄弟 + 父级直接文本）的标签文本，用来判断价格类型
+  function labelNear(el) {
+    const parts = [];
+    const own = norm(el.textContent);
+    if (own) parts.push(own.slice(0, 30));
+    let prev = el.previousElementSibling;
+    for (let i = 0; i < 2 && prev; i++) {
+      const t = norm(prev.textContent);
+      if (t && t.length <= 30) parts.push(t.slice(0, 30));
+      prev = prev.previousElementSibling;
+    }
+    const p = el.parentElement;
+    if (p) {
+      for (const node of Array.from(p.childNodes)) {
+        if (node.nodeType === 3) {
+          const t = norm(node.nodeValue);
+          if (t) parts.push(t.slice(0, 30));
+        } else if (node !== el) {
+          const t = norm(node.textContent);
+          if (t && t.length <= 20) parts.push(t.slice(0, 20));
+        }
+      }
+    }
+    return parts.join(' ');
+  }
+
+  function kindFromLabel(label, font) {
+    if (/PLUS|plus|会员价|会员专享/.test(label)) return 'plus';
+    if (/到手价|预估到手|券后|券后价|到手/.test(label)) return 'hand';
+    if (/电商平台价|前台价|原价|划线价/.test(label)) return 'main';
+    // 没有标签时：大字号基本就是到手价，小字号多半是电商平台价
+    return font >= 18 ? 'hand' : 'main';
+  }
+
+  function isStrike(el) {
+    let cur = el;
+    for (let i = 0; i < 3 && cur && cur !== document.body; i++) {
+      const tag = (cur.tagName || '').toLowerCase();
+      if (tag === 'del' || tag === 's' || tag === 'strike') return true;
+      try {
+        const cs = getComputedStyle(cur);
+        const deco = (cs && (cs.textDecorationLine || cs.textDecoration)) || '';
+        if (/line-through/i.test(deco)) return true;
+      } catch (e) {
+        // 忽略
+      }
+      cur = cur.parentElement;
+    }
+    return false;
+  }
+
+  // 收集页面上「看得见、不在排除模块里、文本是一个完整价格」的元素
+  function collectPriceElements(allowBelowFold) {
+    const out = [];
+    let nodes;
+    try {
+      nodes = document.querySelectorAll('span,strong,em,i,b,div,p,dt,dd,a');
+    } catch (e) {
+      nodes = [];
+    }
+    const seen = new Set();
+    for (const el of nodes) {
+      if (out.length >= 600) break;
+      if (!el || !el.isConnected) continue;
+      const text = norm(el.textContent);
+      if (!text || text.length > 24) continue;
+      const price = parsePriceText(text);
+      if (price == null || price < MIN_PLAUSIBLE_PRICE) continue;
+      if (!isVisible(el)) continue;
+      if (inExcludedContainer(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (!allowBelowFold && !inFirstScreen(r)) continue;
+      const key = price + '|' + Math.round(r.top) + '|' + Math.round(r.left) + '|' + Math.round(r.width);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const font = fontOf(el);
+      const label = labelNear(el);
+      const c = {
+        el: el,
+        price: price,
+        font: font,
+        strike: isStrike(el),
+        label: label.slice(0, 60),
+        cls: classOf(el).slice(0, 80),
+        rect: { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
+      };
+      c.kind = c.strike ? 'main' : kindFromLabel(label, font);
+      out.push(c);
+    }
+    return out;
+  }
+
+  // 选价：字号最大的那个价格 = 当前商品的到手价（电商平台商品页的一贯排版）
+  function pickFromCandidates(cands) {
+    if (!cands.length) return { hand: null, main: null, plus: null, source: '' };
+    const sorted = cands.slice().sort((a, b) => {
+      if (b.font !== a.font) return b.font - a.font;
+      return a.rect.top - b.rect.top || a.rect.left - b.rect.left;
+    });
+    const biggest = sorted[0];
+    const hand =
+      sorted.find((c) => c.kind === 'hand' && c.font >= biggest.font - 2) ||
+      (biggest.kind !== 'main' ? biggest : null) ||
+      null;
+    // 电商平台价：同区域里字号更小的、带电商平台价标签或被划掉的
+    let main = sorted.find((c) => c !== hand && c.kind === 'main' && c.font <= (hand ? hand.font : 999));
+    if (!main && hand) {
+      main = sorted.find((c) => c !== hand && c.strike && Math.abs(c.rect.top - hand.rect.top) < 160);
+    }
+    if (!main) main = sorted.find((c) => c !== hand && c.font < (hand ? hand.font : 999)) || null;
+    let plus = sorted.find((c) => c.kind === 'plus' && c !== hand) || null;
+    if (hand && plus && plus.price === hand.price) plus = null;
+    const pack = (c, kind) => (c ? { price: c.price, kind: kind, cls: c.cls, label: c.label, rect: c.rect } : null);
+    return {
+      hand: pack(hand, 'hand'),
+      main: pack(main, 'main'),
+      plus: pack(plus, 'plus'),
+      source: hand ? hand.cls : main ? main.cls : ''
+    };
+  }
+
+  function bestPriceOf(picked) {
+    if (!picked) return null;
+    return (
+      (picked.hand && picked.hand.price) ||
+      (picked.main && picked.main.price) ||
+      (picked.plus && picked.plus.price) ||
+      null
+    );
   }
 
   function getTitle() {
@@ -127,295 +312,39 @@
     };
   }
 
-  // 划线价（原价/电商平台价）通常在 <del>/<s>/<strike> 或带 line-through 的样式里，
-  // 这类数字不是当前到手价，必须排除。
-  function isStrike(el) {
-    let cur = el;
-    for (let i = 0; i < 3 && cur && cur !== document.body; i++) {
-      const tag = (cur.tagName || '').toLowerCase();
-      if (tag === 'del' || tag === 's' || tag === 'strike') return true;
-      try {
-        const cs = getComputedStyle(cur);
-        const deco = (cs && (cs.textDecorationLine || cs.textDecoration)) || '';
-        if (/line-through/i.test(deco)) return true;
-      } catch (e) {
-        // 忽略
-      }
-      cur = cur.parentElement;
-    }
-    return false;
-  }
-
-  // 疑似非价格文本：折扣、期数、件数、人数、满减等
-  function looksLikeUnitText(text) {
-    return /[折期件人年月天星分%]|满\s*\d|第\s*\d|前\s*\d|白条|免息|定金|尾款/.test(String(text || ''));
-  }
-
-  function isSingleDigitFragment(text) {
-    const t = String(text || '').replace(/[¥￥,.\s]/g, '');
-    return /^[0-9]{1,2}$/.test(t) && !/[¥￥]/.test(String(text || ''));
-  }
-
-  function collectCandidates() {
-    const roots = [];
-    const rootSelectors = [
-      '#price',
-      '.summary-price',
-      '.price-info',
-      '.p-price',
-      '.sku-price',
-      '[class*="summary-price"]',
-      '[class*="price-box"]',
-      '[class*="priceBox"]',
-      '[class*="price-info"]',
-      '.itemInfo-wrap',
-      '.product-intro'
-    ];
-    for (const sel of rootSelectors) {
-      try {
-        document.querySelectorAll(sel).forEach((el) => {
-          if (roots.indexOf(el) < 0) roots.push(el);
-        });
-      } catch (e) {
-        // 忽略无效选择器
-      }
-    }
-
-    const elements = [];
-    const seenEl = new Set();
-    const pushScope = (root) => {
-      try {
-        root.querySelectorAll('span,strong,em,i,b,div,p').forEach((el) => {
-          if (seenEl.has(el)) return;
-          seenEl.add(el);
-          elements.push(el);
-        });
-      } catch (e) {
-        // 忽略
-      }
-    };
-    roots.forEach(pushScope);
-    if (!elements.length) {
-      try {
-        document.querySelectorAll('span,strong,em,i,b,div,p').forEach((el) => {
-          if (elements.length >= 5000) return;
-          if (seenEl.has(el)) return;
-          seenEl.add(el);
-          elements.push(el);
-        });
-      } catch (e) {
-        // 忽略
-      }
-    }
-
-    const cands = [];
-    const seenKey = new Set();
-    for (const el of elements) {
-      if (!el || !el.isConnected) continue;
-      if (el.children.length > 3) continue;
-      const text = norm(el.textContent);
-      if (!text || text.length > 40) continue;
-      const cls = classOf(el);
-      const id = el.id || '';
-      const clsId = cls + ' ' + id;
-      const priceClass = /price/i.test(clsId);
-      const hasSymbol = /[¥￥]/.test(text);
-      if (!hasSymbol && !priceClass) continue;
-      const price = extractPrice(text, priceClass);
-      if (price == null) continue;
-      // 划线价（原价/电商平台价）不是到手价，直接跳过
-      if (isStrike(el)) continue;
-      if (/old|origin|market|strike|del|through|line-through|save|saving|discount/i.test(clsId)) continue;
-
-      let label = '';
-      let cur = el.parentElement;
-      for (let i = 0; i < 4 && cur && cur !== document.body; i++) {
-        const ct = norm(cur.textContent);
-        if (ct && ct.length <= 90) label = ct;
-        cur = cur.parentElement;
-      }
-      const labelText = norm(label);
-      const ctx = labelText + ' ' + clsId + ' ' + text;
-      let kind = 'unknown';
-      if (/plus|PLUS|会员价|会员专享/i.test(ctx)) kind = 'plus';
-      else if (/到手|预估到手|券后|预估/i.test(ctx)) kind = 'hand';
-      else if (/电商平台价|京\s*东\s*价/i.test(ctx)) kind = 'main';
-
-      const suspect =
-        price < MIN_PLAUSIBLE_PRICE ||
-        isSingleDigitFragment(text) ||
-        (looksLikeUnitText(text) && !hasSymbol);
-
-      const key = price + '|' + kind + '|' + cls.slice(0, 40) + '|' + text.slice(0, 20);
-      if (seenKey.has(key)) continue;
-      seenKey.add(key);
-      cands.push({
-        price: price,
-        text: text.slice(0, 60),
-        cls: cls.slice(0, 160),
-        id: id.slice(0, 60),
-        label: labelText.slice(0, 100),
-        kind: kind,
-        suspect: suspect,
-        digits: String(Math.round(price)).length
-      });
-    }
-
-    // 精准标签法：电商平台价格区一般有「电商平台价 / 到手价 / PLUS会员价」标签，
-    // 按标签找到同一容器里的价格，比全页扫描更不容易读错。
-    let labelEls = [];
-    try {
-      labelEls = Array.from(document.querySelectorAll('span,strong,em,b,i,div,dt,dd,p,label'));
-    } catch (e) {
-      labelEls = [];
-    }
-    for (const el of labelEls) {
-      if (el.children.length > 0) continue;
-      const raw = norm(el.textContent).replace(/[：:\s]/g, '');
-      if (!raw || raw.length > 10) continue;
-      let kind = '';
-      if (/plus|会员/i.test(raw)) kind = 'plus';
-      else if (/到手|券后/i.test(raw)) kind = 'hand';
-      else if (/电商平台价/i.test(raw)) kind = 'main';
-      if (!kind) continue;
-      let box = el.parentElement;
-      for (let depth = 0; depth < 3 && box; depth++) {
-        // 优先在容器内找「非划线价」的价格节点
-        let price = null;
-        try {
-          const priceEls = box.querySelectorAll('span,strong,em,i,b,del,s');
-          for (const pe of priceEls) {
-            if (pe.children.length > 0) continue;
-            if (isStrike(pe)) continue;
-            const p = extractPrice(norm(pe.textContent), true);
-            if (p != null && p >= MIN_PLAUSIBLE_PRICE) {
-              price = p;
-              break;
-            }
-          }
-        } catch (e) {
-          price = null;
-        }
-        // 容器内找不到时，退回整段文本
-        if (price == null) {
-          const text = norm(box.textContent);
-          if (text && text.length <= 70 && !/line-through/i.test(classOf(box))) {
-            const p = extractPrice(text, true);
-            if (p != null && p >= MIN_PLAUSIBLE_PRICE) price = p;
-          }
-        }
-        if (price != null) {
-          const key = 'L' + price + '|' + kind;
-          if (!seenKey.has(key)) {
-            seenKey.add(key);
-            cands.push({
-              price: price,
-              text: norm(box.textContent).slice(0, 60),
-              cls: classOf(el).slice(0, 120),
-              id: '',
-              label: raw,
-              kind: kind,
-              suspect: false,
-              strong: true,
-              digits: String(Math.round(price)).length
-            });
-          }
-          break;
-        }
-        box = box.parentElement;
-      }
-    }
-
-    for (const c of cands) {
-      const ctx = c.cls + ' ' + c.id;
-      let score = 0;
-      if (/price|summary|info/i.test(ctx)) score += 6;
-      if (/price/i.test(ctx)) score += 4;
-      if (/[¥￥]/.test(c.text)) score += 2;
-      if (c.digits >= 3) score += 2;
-      if (c.kind === 'main') score += 3;
-      else if (c.kind === 'hand') score += 2;
-      else if (c.kind === 'plus') score += 1;
-      if (c.strong) score += 15;
-      if (/old|origin|market|strike|del|through/i.test(ctx + ' ' + c.label)) score -= 12;
-      if (/合计|总计|小计|运费|优惠|满减|已售|评价|销量|分期|月供|白条|定金|尾款/i.test(c.label)) score -= 10;
-      if (c.price <= 0 || c.price > 2000000) score -= 30;
-      if (c.suspect) score -= 25;
-      c.score = score;
-    }
-    cands.sort((a, b) => b.score - a.score);
-    return cands;
-  }
-
-  function mergeCandidates(listA, listB) {
-    const map = new Map();
-    for (const c of listA.concat(listB)) {
-      const key = c.price + '|' + c.kind + '|' + c.cls.slice(0, 40) + '|' + c.text.slice(0, 20);
-      const prev = map.get(key);
-      if (!prev || c.score > prev.score) map.set(key, c);
-    }
-    return Array.from(map.values()).sort((a, b) => b.score - a.score);
-  }
-
-  function pickPrices(cands) {
-    const usable = cands.filter((c) => c && !c.suspect && c.price >= MIN_PLAUSIBLE_PRICE);
-    const best = (kind) => usable.find((c) => c.kind === kind) || null;
-    let mainCand = best('main');
-    if (!mainCand) mainCand = usable.find((c) => c.kind !== 'plus') || null;
-    let plusCand = best('plus');
-    let handCand = best('hand');
-    // 交叉校验：到手价/PLUS 价正常不应高于主价格，高于就丢弃，防止误判
-    const mainPrice = mainCand ? mainCand.price : null;
-    if (mainPrice != null) {
-      if (handCand && handCand.price > mainPrice * 1.02) handCand = null;
-      if (plusCand && plusCand.price > mainPrice * 1.02) plusCand = null;
-    }
-    const pack = (c, kind) => (c ? { price: c.price, kind: kind, cls: c.cls, label: c.label } : null);
-    return {
-      main: pack(mainCand, 'main'),
-      plus: pack(plusCand, 'plus'),
-      hand: pack(handCand, 'hand')
-    };
-  }
-
-  function bestPriceOf(picked) {
-    if (!picked) return null;
-    return (
-      (picked.hand && picked.hand.price) ||
-      (picked.main && picked.main.price) ||
-      (picked.plus && picked.plus.price) ||
-      null
-    );
-  }
-
-  // 等价格稳定：连续多次取到同一个合理价格，避免读到价格动画/懒加载的中间值
+  // 等价格稳定：连续两次取到同一个合理价格（最多 20 秒）
+  // 优先等到「到手价（大字号）」稳定；老页面没有到手价标签时，最多等 6 秒就接受主价格
   async function waitForStablePrice() {
     const started = Date.now();
     let lastBest = null;
     let stable = 0;
-    let cands = [];
+    let picked = null;
+    let lastCands = [];
     while (Date.now() - started < MAX_WAIT_MS) {
-      cands = collectCandidates();
-      if (cands.length) {
-        const picked = pickPrices(cands);
-        const best = bestPriceOf(picked);
-        if (best != null && lastBest === best) {
-          stable++;
-        } else {
-          stable = 0;
-          lastBest = best;
-        }
-        if (best != null && stable >= STABLE_ROUNDS) return cands;
+      let cands = collectPriceElements(false);
+      if (!cands.length) cands = collectPriceElements(true); // 首屏没有时放宽到整页（仍排除推荐/比价模块）
+      picked = pickFromCandidates(cands);
+      lastCands = cands;
+      const best = bestPriceOf(picked);
+      if (best != null && lastBest === best) {
+        stable++;
+      } else {
+        stable = 0;
+        lastBest = best;
+      }
+      if (best != null && stable >= STABLE_ROUNDS) {
+        const waited = Date.now() - started;
+        // 到手价往往比电商平台价晚渲染：没拿到到手价时多等一会儿
+        if ((picked && picked.hand) || waited > 6000) return { picked, cands };
       }
       await sleep(500);
     }
-    return cands;
+    return { picked, cands: lastCands };
   }
 
   function send(message) {
     try {
       chrome.runtime.sendMessage(message, () => {
-        // 工作台没开时会有 lastError，忽略即可
         void chrome.runtime.lastError;
       });
     } catch (e) {
@@ -432,7 +361,8 @@
       url: location.href,
       title: getTitle(),
       at: new Date().toISOString(),
-      account: account
+      account: account,
+      viewport: { w: window.innerWidth || 0, h: window.innerHeight || 0 }
     };
 
     const flags = pageFlags();
@@ -449,59 +379,57 @@
       return;
     }
 
-    let cands = await waitForStablePrice();
-    if (!cands.length) {
+    const stable = await waitForStablePrice();
+    if (!stable.cands.length || !stable.picked || bestPriceOf(stable.picked) == null) {
       send(Object.assign({}, base, {
         ok: false,
         reason: flags.offSale ? '商品已下架/页面没有价格' : '页面上没有识别到价格（页面可能改版或未加载完）',
-        flags: flags,
-        candidates: [],
-        main: null,
-        plus: null,
-        hand: null
-      }));
-      return;
-    }
-
-    // 再等一小会儿并重新扫一次，合并（PLUS 价/到手价有时比主价格晚渲染）
-    await sleep(900);
-    cands = mergeCandidates(cands, collectCandidates());
-    const picked = pickPrices(cands);
-    const best = bestPriceOf(picked);
-    const finalFlags = pageFlags();
-
-    if (best == null) {
-      const suspects = cands.filter((c) => c.suspect).slice(0, 8);
-      send(Object.assign({}, base, {
-        ok: false,
-        reason:
-          suspects.length > 0
-            ? '取到的价格疑似不完整（例如只读到数字片段/促销角标），已跳过，建议重采'
-            : '页面上没有识别到价格（页面可能改版或未加载完）',
-        flags: finalFlags,
+        flags: pageFlags(),
         main: null,
         plus: null,
         hand: null,
-        candidates: suspects.length ? suspects : cands.slice(0, 8)
+        candidates: stable.cands.slice(0, 8).map((c) => ({
+          price: c.price, kind: c.kind, text: c.label, cls: c.cls, font: c.font, strike: c.strike
+        }))
       }));
       return;
     }
+
+    // 复核：页面价格可能在「券/促销计算」后又刷新一次（实测出现过 24699 → 25099 这种 400 元变化）。
+    // 稳定之后再等 1.2 秒重新读，直到两次读数一致才作为最终价；不一致就以最新一次为准并记录变化。
+    let picked = stable.picked;
+    let cands = stable.cands;
+    const changes = [];
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await sleep(1200);
+      const fresh = collectPriceElements(true);
+      const freshPicked = pickFromCandidates(fresh);
+      const before = bestPriceOf(picked);
+      const after = bestPriceOf(freshPicked);
+      if (after == null) break; // 页面反而没价了，保留上一个结果
+      picked = freshPicked;
+      cands = fresh;
+      if (before != null && Math.abs(before - after) > 0.005) {
+        changes.push({ from: before, to: after });
+        continue; // 价格刚变过，再给一轮确认
+      }
+      break;
+    }
+    const hand = picked.hand || picked.main || picked.plus;
+    const priceRect = hand && hand.rect ? hand.rect : null;
 
     send(Object.assign({}, base, {
       ok: true,
       reason: '',
-      flags: finalFlags,
+      flags: pageFlags(),
       main: picked.main,
       plus: picked.plus,
       hand: picked.hand,
-      candidates: cands.slice(0, 20).map((c) => ({
-        price: c.price,
-        kind: c.kind,
-        text: c.text,
-        cls: c.cls,
-        label: c.label,
-        score: c.score,
-        suspect: c.suspect
+      source: picked.source || '',
+      rect: priceRect,
+      priceChanges: changes,
+      candidates: cands.slice(0, 12).map((c) => ({
+        price: c.price, kind: c.kind, text: c.label, cls: c.cls, font: c.font, strike: c.strike
       }))
     }));
   }

@@ -1,5 +1,5 @@
-// 预览延迟设置自测
-const PORT = Number(process.argv[2] || 9266);
+// 第二轨道布局 + 截图能力自测
+const PORT = Number(process.argv[2] || 9268);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function httpJson(p) { const res = await fetch('http://127.0.0.1:' + PORT + p); return JSON.parse(await res.text()); }
 async function main() {
@@ -20,24 +20,35 @@ async function main() {
   const send = (method, params) => new Promise((resolve, reject) => { const id = ++seq; pending.set(id, { resolve, reject }); ws.send(JSON.stringify({ id: id, method: method, params: params || {} })); });
   const evaluate = async (expression, awaitPromise) => {
     const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: !!awaitPromise });
-    if (r.exceptionDetails) throw new Error('eval error: ' + JSON.stringify(r.exceptionDetails).slice(0, 400));
+    if (r.exceptionDetails) throw new Error('eval error: ' + JSON.stringify(r.exceptionDetails).slice(0, 500));
     return r.result.value;
   };
-  await send('Runtime.enable'); await send('Page.enable'); await sleep(2500);
-  await evaluate("window.alert = function () {}; window.confirm = function () { return true; }; true");
+  await send('Runtime.enable'); await send('Page.enable'); await sleep(2800);
   const out = {};
-  out.hasInput = await evaluate("!!document.getElementById('setPreviewDelay')");
-  out.defaultValue = await evaluate("previewDelayValue()");
-  out.afterSave = await evaluate(`(async () => {
-    openSettings();
-    const input = document.getElementById('setPreviewDelay');
-    input.value = '1600';
-    await saveSettings();
-    document.getElementById('settingsDialog').close();
-    return { setting: state.db.settings.previewDelayMs, value: previewDelayValue() };
+  out.layout = await evaluate(`(() => {
+    const wrap = document.querySelector('.tableWrap');
+    const ths = Array.from(document.querySelectorAll('#tblHead th')).map((th) => ({ cls: th.className, text: th.textContent.trim(), w: th.getBoundingClientRect().width }));
+    return {
+      wrapClient: wrap ? wrap.clientWidth : null,
+      wrapScroll: wrap ? wrap.scrollWidth : null,
+      overflow: wrap ? wrap.scrollWidth > wrap.clientWidth + 1 : null,
+      ths: ths.map((t) => t.text + ':' + Math.round(t.w)).join(' | '),
+      totalTh: ths.reduce((s, t) => s + t.w, 0)
+    };
+  })()`);
+  out.capture = await evaluate(`(async () => {
+    let win = null;
+    try {
+      win = await chrome.windows.create({ url: chrome.runtime.getURL('app.html'), type: 'popup', focused: true, width: 900, height: 700 });
+      await new Promise((r) => setTimeout(r, 2500));
+      const shot = await chrome.tabs.captureVisibleTab(win.id, { format: 'png' });
+      return { ok: true, length: shot ? shot.length : 0, prefix: shot ? shot.slice(0, 30) : '' };
+    } catch (e) {
+      return { ok: false, error: String((e && e.message) || e) };
+    } finally {
+      if (win && win.id != null) { try { await chrome.windows.remove(win.id); } catch (e) {} }
+    }
   })()`, true);
-  out.clampLow = await evaluate(`(() => { state.db.settings.previewDelayMs = 100; return previewDelayValue(); })()`);
-  out.clampHigh = await evaluate(`(() => { state.db.settings.previewDelayMs = 99999; return previewDelayValue(); })()`);
   console.log(JSON.stringify({ ok: true, browser: version.Browser, out }, null, 2));
   ws.close();
 }

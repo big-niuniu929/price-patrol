@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from datetime import datetime
@@ -59,12 +60,99 @@ def to_text(value) -> str:
     return str(value).strip()
 
 
+# ---- 简单公式求值（阈值写成 =E58-1060 之类、且保存时没有缓存结果的单元格）----
+def _eval_formula(ws, formula, cache, stack):
+    text = re.sub(r"\s+", "", str(formula or "").lstrip("="))
+    n = len(text)
+    pos = [0]
+
+    def peek():
+        return text[pos[0]] if pos[0] < n else ""
+
+    def parse_expr():
+        value = parse_term()
+        while peek() in ("+", "-"):
+            op = text[pos[0]]
+            pos[0] += 1
+            right = parse_term()
+            value = value + right if op == "+" else value - right
+        return value
+
+    def parse_term():
+        value = parse_factor()
+        while peek() in ("*", "/"):
+            op = text[pos[0]]
+            pos[0] += 1
+            right = parse_factor()
+            value = value * right if op == "*" else value / right
+        return value
+
+    def parse_factor():
+        if peek() == "+":
+            pos[0] += 1
+            return parse_factor()
+        if peek() == "-":
+            pos[0] += 1
+            return -parse_factor()
+        if peek() == "(":
+            pos[0] += 1
+            value = parse_expr()
+            if peek() == ")":
+                pos[0] += 1
+            return value
+        m = re.match(r"\d+(?:\.\d+)?", text[pos[0]:])
+        if m:
+            pos[0] += len(m.group(0))
+            return float(m.group(0))
+        m = re.match(r"\$?([A-Z]+)\$?(\d+)", text[pos[0]:])
+        if m:
+            pos[0] += len(m.group(0))
+            col = 0
+            for ch in m.group(1):
+                col = col * 26 + (ord(ch) - 64)
+            ref_value = _cell_value(ws, int(m.group(2)), col, cache, stack)
+            num = to_number(ref_value)
+            return num if num is not None else float("nan")
+        pos[0] = n
+        return float("nan")
+
+    try:
+        value = parse_expr()
+        if pos[0] < n or not math.isfinite(value):
+            return None
+        return value
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _cell_value(ws, row, col, cache, stack):
+    key = (row, col)
+    if key in cache:
+        return cache[key]
+    cell = ws.cell(row=row, column=col)
+    value = cell.value
+    if cell.data_type == "f" and isinstance(value, str):
+        if key in stack:
+            return None
+        stack.add(key)
+        try:
+            result = _eval_formula(ws, value, cache, stack)
+        finally:
+            stack.discard(key)
+        if result is None:
+            result = cell.value  # 回退：返回公式字符串（后续 to_number 会得到 None）
+        cache[key] = result
+        return result
+    cache[key] = value
+    return value
+
+
 def detect_columns(ws):
     """按表头识别列号，返回 {逻辑字段: 列号}。"""
     header_values = {}
     max_col = min(ws.max_column or 1, 40)
     for col in range(1, max_col + 1):
-        text = norm_header(ws.cell(row=1, column=col).value)
+        text = norm_header(_cell_value(ws, 1, col, {}, set()))
         if text:
             header_values[col] = text
 
@@ -84,10 +172,12 @@ def parse_sheet(ws):
         return [], mapping, header_values, 0
 
     rows = []
+    cell_cache = {}
+    cell_stack = set()
     for row_idx in range(2, ws.max_row + 1):
         def cell(field):
             col = mapping.get(field)
-            return ws.cell(row=row_idx, column=col).value if col else None
+            return _cell_value(ws, row_idx, col, cell_cache, cell_stack) if col else None
 
         sku_text = to_text(cell("sku"))
         sku = sku_text if sku_text.isdigit() else ""
@@ -145,11 +235,58 @@ def parse_sheet(ws):
     return deduped, mapping, header_values, dropped
 
 
+def merge_new_sheets(sheets):
+    """把「XX新表」合并进「XX」：同 SKU 用新表非空字段覆盖旧表；新 SKU/无 SKU 行追加到末尾。
+
+    行号 / rowId 保持旧表不变（这样已下架状态、手动改价不会漂移）。
+    """
+    by_name = {s["name"]: s for s in sheets}
+    consumed = set()
+    for s in sheets:
+        name = s["name"]
+        if not name.endswith("新表"):
+            continue
+        base_name = name[: -len("新表")]
+        base = by_name.get(base_name)
+        if not base:
+            continue
+        old_by_sku = {r["sku"]: r for r in base["rows"] if r["sku"]}
+        fields = ["model", "package", "frontPrice", "utilMin", "plusMin", "utilCurrent", "plusCurrent"]
+        next_row = max((r.get("excelRow") or 0) for r in base["rows"]) + 1
+        added = 0
+        for r in s["rows"]:
+            sku = r["sku"]
+            if sku and sku in old_by_sku:
+                target = old_by_sku[sku]
+                for f in fields:
+                    v = r.get(f)
+                    if v is None or (isinstance(v, str) and not v.strip()):
+                        continue  # 新表空字段保留旧值
+                    target[f] = v
+                continue
+            row = dict(r)
+            row["sheet"] = base_name
+            row["excelRow"] = next_row
+            row["rowId"] = "%s!%d" % (base_name, next_row)
+            if not row.get("sku") and not row.get("note"):
+                row["note"] = "%s新增，待补 SKU" % name
+            base["rows"].append(row)
+            old_by_sku[row["sku"]] = row
+            next_row += 1
+            added += 1
+        base["rowCount"] = len(base["rows"])
+        base["withSku"] = sum(1 for r in base["rows"] if r["sku"])
+        base["missingSku"] = base["rowCount"] - base["withSku"]
+        consumed.add(name)
+        print("[merge] %s -> %s：新增 %d 行，合并后 %d 行" % (name, base_name, added, base["rowCount"]))
+    return [s for s in sheets if s["name"] not in consumed]
+
+
 def main():
     xlsx = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     out = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_JSON
 
-    wb = load_workbook(xlsx, data_only=True)
+    wb = load_workbook(xlsx)  # 不用 data_only：需要读取公式并自行计算
     sheets = []
     total = 0
     for ws in wb.worksheets:
@@ -170,6 +307,8 @@ def main():
         )
         print(f"[{ws.title}] rows={len(rows)} withSku={with_sku} deduped={dropped} columns={mapping}")
     wb.close()
+    sheets = merge_new_sheets(sheets)
+    total = sum(len(s["rows"]) for s in sheets)
 
     seen = {}
     for sheet in sheets:
