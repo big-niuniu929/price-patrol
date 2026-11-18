@@ -1,432 +1,846 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>电商平台价格巡检工作台 · 矩阵版</title>
+  <title>电商平台市占率数据工作台</title>
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo">¥</span>
-      <div class="brandText">
-        <h1>电商平台价格巡检工作台 <span id="trackBadge" class="trackBadge track2">轨道② · 前台窗口+AI复核</span></h1>
-        <p class="sub">按 SKU 巡检表读取电商平台到手价 · <b id="trackMeta">前台窗口 · AI 复核（截图不保存）</b> · 数据只存本机</p>
-      </div>
-    </div>
-    <div class="topActions">
-      <span id="accountInfo" class="accountInfo">尚未采集</span>
-      <a class="btn ghost" href="https://home.shop.example.com" target="_blank" rel="noreferrer">打开电商平台</a>
-      <button id="helpBtn" class="btn ghost">帮助</button>
-      <button id="aiBtn" class="btn ghost" title="AI 设置与连接测试">AI 设置</button>
-      <button id="settingsBtn" class="btn ghost">设置</button>
-    </div>
-  </header>
+  <!-- 深色玻璃背景：极光色块 + 噪点（纯 CSS，无外部资源） -->
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="grain" aria-hidden="true"></div>
 
-  <nav class="viewNav">
-    <button id="tabWorkbench" class="viewTab active" type="button">巡检工作台</button>
-    <button id="tabOverview" class="viewTab" type="button">总览 <span id="reportBadge" class="navBadge hidden">0</span></button>
-    <button id="tabCompare" class="viewTab" type="button">同品比价</button>
-    <span class="viewNavHint" id="viewHint"></span>
-  </nav>
-
-  <main id="viewWorkbench" class="view">
-    <section class="stats" id="statsBar"></section>
-
-    <div class="banner" id="riskBanner">
-      <span><b>使用提醒：</b>只在你手动点击后、按节奏打开商品页读价（可暂停/停止）。矩阵速采会并行打开一小批页面，请把每批控制在 4–8 个、批次之间留间隔，低频分批，建议用专用账号，不要做无人值守高频抓取。</span>
-      <button id="dismissBanner" class="linkBtn">知道了</button>
-    </div>
-
-    <section class="toolbar">
-      <div class="tabs" id="sheetTabs"></div>
-      <div class="filters">
-        <select id="statusFilter" class="input select">
-          <option value="all">全部状态</option>
-          <option value="todo">未采齐</option>
-          <option value="alert">低于阈值</option>
-          <option value="confirm">需人工确认</option>
-          <option value="manual">手动改价</option>
-          <option value="fail">采集失败</option>
-          <option value="nosku">待补 SKU</option>
-          <option value="offline">已下架</option>
-        </select>
-        <input id="searchInput" class="input" type="search" placeholder="搜 SKU / 型号 / 套餐">
-        <button id="exportBtn" class="btn ghost">导出 CSV</button>
-        <button id="exportJsonBtn" class="btn ghost" title="导出完整采集数据（JSON，便于备份/对账）">导出 JSON</button>
-        <button id="importDataBtn" class="btn ghost" title="导入之前导出的 JSON，恢复采集数据/手动改价">导入数据</button>
-        <input id="importDataFile" type="file" accept=".json,application/json" hidden>
-        <button id="manageBaseBtn" class="btn ghost" title="管理内置巡检表：增删改 SKU / 阈值 / 类目">管理基表</button>
-        <button id="importBtn" class="btn ghost" title="支持直接导入 .xlsx 巡检表，或之前导出的基表 JSON">导入基表</button>
-        <input id="importFile" type="file" accept=".xlsx,.xlsm,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
-        <button id="resetBaseBtn" class="btn ghost" title="恢复扩展内置的基表">恢复内置</button>
-        <button id="purgeBtn" class="btn ghost danger" title="清空已采集的价格（不影响基表）">清空采集</button>
-      </div>
-    </section>
-
-    <section class="runBar">
-      <div class="trackSwitch" id="trackSwitch" title="选择本次巡检用哪条轨道">
-        <button type="button" class="trackOpt" data-track="track1">轨道① · 后台标签页</button>
-        <button type="button" class="trackOpt active" data-track="track2">轨道② · 前台窗口 + AI</button>
-        <button type="button" class="trackOpt" data-track="matrix">矩阵③ · 阵列速采</button>
-      </div>
-      <button id="runOfficialBtn" class="btn" title="用官方 API（普惠到手价）批量填充有权限的 SKU">官方API采集（普惠）</button>
-      <button id="runUtilBtn" class="btn primary">普惠号巡检</button>
-      <button id="runPlusBtn" class="btn primary plus">会员号巡检</button>
-      <button id="runMatrixUtilBtn" class="btn matrixBtn" title="矩阵速采（普惠）：批量并行打开商品页，成排读取后一次性批量写入，再批量关闭">⚡ 矩阵速采 · 普惠</button>
-      <button id="runMatrixPlusBtn" class="btn matrixBtn plus" title="矩阵速采（会员）：批量并行打开商品页，成排读取后一次性批量写入，再批量关闭">⚡ 矩阵速采 · 会员</button>
-      <button id="multiRerunBtn" class="btn" disabled title="勾选表格里的行后重采选中的 SKU（可临时选账号和轨道）">重采选中</button>
-      <button id="pauseBtn" class="btn ghost" disabled>暂停</button>
-      <button id="stopBtn" class="btn ghost danger" disabled>停止</button>
-      <span id="runHint" class="runHint"></span>
-    </section>
-
-    <section class="statusChips">
-      <span id="aiStatusChip" class="chip">AI 检查中…</span>
-      <span id="apiStatusChip" class="chip">官方API 检查中…</span>
-      <button id="mxOpenBtn" class="chip mxOpenChip" type="button" title="打开/唤起矩阵大屏（可选 HUD，默认矩阵速采直接开真实多窗口）">▣ 矩阵大屏 · 可选 HUD</button>
-      <span class="chipHint">矩阵速采默认直接打开多个真实商品页窗口，沿屏幕弧线排开；矩阵大屏只是可选的同步 HUD（粉末动画在大屏里）</span>
-    </section>
-  </main>
-
-  <main id="viewOverview" class="view hidden">
-    <section class="ovTopTabs">
-      <div class="tabs ovTabs" id="ovSheetTabs"></div>
-      <span class="ovTopHint">先选类目，再看下面的数据</span>
-    </section>
-
-    <section class="ovCards" id="ovCards"></section>
-
-    <section class="ovProgressWrap">
-      <div class="ovProgressRow">
-        <span class="ovLabel">普惠采集进度</span>
-        <div class="progressBar"><div id="ovUtilFill"></div></div>
-        <span id="ovUtilText" class="ovProgressText">0 / 0</span>
-      </div>
-      <div class="ovProgressRow">
-        <span class="ovLabel">会员采集进度</span>
-        <div class="progressBar"><div id="ovPlusFill"></div></div>
-        <span id="ovPlusText" class="ovProgressText">0 / 0</span>
-      </div>
-    </section>
-
-    <section class="ovToolbar">
-      <div class="ovFilter">
-        <span id="ovFilterHint" class="ovFilterHint">全部 SKU</span>
-        <button id="ovClearFilterBtn" class="linkBtn hidden" type="button">清除筛选</button>
-      </div>
-      <div class="ovActions">
-        <button id="ovConfirmBtn" class="btn" disabled title="确认勾选行里带『需人工确认』的价格（确认后状态转为正常）">确认选中</button>
-        <button id="ovOfflineBtn" class="btn ghost danger" disabled title="把勾选的行批量移入下架库（不再参与巡检，可恢复）">下架选中</button>
-        <button id="ovSummaryBtn" class="btn primary" disabled title="把勾选的行加入待上报区（浅红底色）">汇总选中</button>
-        <button id="ovExportReportBtn" class="btn" disabled>导出待上报 Excel</button>
-        <button id="ovClearReportBtn" class="btn ghost danger" disabled>清空待上报</button>
-      </div>
-    </section>
-  </main>
-
-  <main id="viewCompare" class="view hidden">
-    <section class="cmpHead">
-      <div class="cmpSummary" id="compareSummary">正在统计…</div>
-      <div class="cmpActions">
-        <button id="cmpCollectBtn" class="btn primary" type="button" title="把当前比价的全部 SKU（两个店铺都算）按同一账号、同一轨道采集一遍">采集全部比价 SKU</button>
-        <button id="cmpFilterAll" class="btn ghost active" type="button">全部</button>
-        <button id="cmpFilterDiff" class="btn ghost" type="button">只看有差异</button>
-        <button id="cmpFilterMissing" class="btn ghost" type="button">只看待采齐</button>
-        <button id="cmpExportBtn" class="btn ghost" type="button">导出比价 CSV</button>
-      </div>
-      <p class="cmpHint">按「套餐型号」自动匹配不同店铺的同款产品（忽略空格、<code>-京仓</code>、大小写）；只统计未下架的行。同一产品在不同店铺的 SKU 会并排对比当前到手价。</p>
-    </section>
-    <div id="compareList" class="cmpList"></div>
-  </main>
-
-  <section class="progressWrap hidden" id="progressWrap">
-    <div class="progressTop">
-      <span id="progressText">准备中…</span>
-      <span id="progressPct"></span>
-    </div>
-    <div class="progressBar"><div id="progressFill"></div></div>
-    <div class="runStats" id="runStats"></div>
-    <div class="logPanel" id="logPanel"></div>
-  </section>
-
-  <section class="tableWrap" id="tableWrap">
-    <div class="tableCaption" id="tableCaption"></div>
-    <table class="tbl">
-      <thead>
-        <tr>
-          <th class="col-check"><input id="selectAllChk" type="checkbox" title="全选/取消全选（当前筛选结果）"></th>
-          <th class="col-sheet">类目</th>
-          <th class="col-row">行</th>
-          <th class="col-sku">SKU</th>
-          <th class="col-model">套餐型号</th>
-          <th class="col-package">套餐</th>
-          <th class="col-front">前台价</th>
-          <th class="col-thr">普惠阈值</th>
-          <th class="col-price">普惠当前价</th>
-          <th class="col-thr">会员阈值</th>
-          <th class="col-price">会员当前价</th>
-          <th class="col-status">状态</th>
-          <th class="col-eye">预览</th>
-          <th class="col-op">操作</th>
-          <th class="col-filler"></th>
-        </tr>
-      </thead>
-      <tbody id="tblBody"></tbody>
-    </table>
-    <div id="empty" class="empty hidden"></div>
-  </section>
-
-  <section id="reportArea" class="reportArea hidden">
-    <div class="reportHead">
-      <h3>待上报区 <span id="reportCount" class="reportCount">0 条</span></h3>
-      <span class="reportTip">已汇总的行会带浅红底色，确认后导出 Excel 上报</span>
-    </div>
-    <div id="reportList" class="reportList"></div>
-  </section>
-
-  <footer class="foot">
-    <span>识别以 SKU 为准；无 SKU 的行可在表格里直接补（自动保存）。如页面改版导致取价不准，可在「设置 → 调试」查看最近一次采集的原始候选价格。</span>
-    <span id="baseInfo" class="baseInfo"></span>
-  </footer>
-
-
-  <dialog id="baseDialog" class="dialog baseDialog">
-    <div class="dialogForm">
-      <h2>管理内置巡检表</h2>
-      <div class="baseCatBar">
-        <div class="tabs" id="baseCatTabs"></div>
-        <div class="baseCatActions">
-          <button id="baseAddCatBtn" class="btn ghost" type="button">新增类目</button>
-          <button id="baseRenameCatBtn" class="btn ghost" type="button">重命名类目</button>
-          <button id="baseDelCatBtn" class="btn ghost danger" type="button">删除类目</button>
-          <button id="baseExportBtn" class="btn ghost" type="button">导出基表 JSON</button>
+  <div class="app-shell">
+    <!-- ======================= 顶栏 ======================= -->
+    <header class="topbar glass">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19V11"></path><path d="M10 19V5"></path><path d="M16 19v-6"></path><path d="M22 19V8"></path>
+          </svg>
+        </span>
+        <div class="brand-copy">
+          <div class="eyebrow">JD MARKET SHARE WORKBENCH</div>
+          <h1>电商平台市占率数据工作台</h1>
+          <p class="sub">榜单导入 · 自动补数 · 在线取价 · 市占统计 · 数据只存本机</p>
         </div>
       </div>
-      <div class="baseTableWrap">
-        <table class="tbl baseTbl">
-          <thead>
-            <tr>
-              <th class="base-col-row">行</th>
-              <th class="base-col-sku">SKU</th>
-              <th>套餐型号</th>
-              <th>套餐</th>
-              <th class="base-col-money">前台价</th>
-              <th class="base-col-money">普惠阈值</th>
-              <th class="base-col-money">会员阈值</th>
-              <th class="base-col-del">操作</th>
-            </tr>
-          </thead>
-          <tbody id="baseTblBody"></tbody>
-        </table>
-      </div>
-      <p class="baseTip">提示：改动会保存到本机并覆盖当前使用的基表；想还原内置数据，可在工具栏点「恢复内置」。「导出基表 JSON」可先备份。</p>
-      <div class="dialogActions baseActions">
-        <button id="baseAddRowBtn" class="btn" type="button">新增一行</button>
-        <span class="baseSpacer"></span>
-        <button id="baseCloseBtn" class="btn ghost" type="button">关闭</button>
-        <button id="baseSaveBtn" class="btn primary" type="button">保存修改</button>
-      </div>
-    </div>
-  </dialog>
 
-  <dialog id="rerunDialog" class="dialog rerunDialog">
-    <form method="dialog" class="dialogForm">
-      <h2>重新采集</h2>
-      <p class="rerunHint" id="rerunHint">选择本次重采使用的账号和轨道。</p>
-      <label class="field">
-        <span>账号</span>
-        <select id="rerunIdentity" class="input">
-          <option value="util">普惠账号（普通账号看到的价格）</option>
-          <option value="plus">PLUS 会员账号（会员价）</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>轨道</span>
-        <select id="rerunTrack" class="input">
-          <option value="background">轨道① 后台标签页（快，不弹窗）</option>
-          <option value="foreground">轨道② 前台窗口 + AI 复核（会抢焦点，慢）</option>
-          <option value="matrix">矩阵③ 阵列速采（并行开一批，批量读写，最快）</option>
-        </select>
-      </label>
-      <label class="field row">
-        <input id="rerunRemember" type="checkbox">
-        <span>记住这次选择，下次重采默认使用</span>
-      </label>
-      <div class="dialogActions">
-        <button id="rerunCancel" class="btn ghost" type="button">取消</button>
-        <button id="rerunStart" class="btn primary" type="button">开始重采</button>
+      <nav class="page-nav" aria-label="功能页面">
+        <button class="nav-btn" data-page-target="workbench" type="button">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.6"></rect><rect x="14" y="3" width="7" height="7" rx="1.6"></rect><rect x="3" y="14" width="7" height="7" rx="1.6"></rect><rect x="14" y="14" width="7" height="7" rx="1.6"></rect></svg>
+          工作台
+        </button>
+        <button class="nav-btn" data-page-target="overview" type="button">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><path d="m4 6 .8.9L6.5 5"></path><path d="m4 12 .8.9L6.5 11"></path><path d="m4 18 .8.9L6.5 17"></path></svg>
+          总览
+        </button>
+        <button class="nav-btn" data-page-target="library" type="button">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4z"></path><path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H14a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"></path></svg>
+          匹配库
+        </button>
+        <button class="nav-btn" data-page-target="stats" type="button">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><rect x="5" y="11" width="3.4" height="7" rx="1"></rect><rect x="10.4" y="6" width="3.4" height="12" rx="1"></rect><rect x="15.8" y="9" width="3.4" height="9" rx="1"></rect></svg>
+          统计看板
+        </button>
+        <button class="nav-btn" data-page-target="settings" type="button">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"></path></svg>
+          设置与帮助
+        </button>
+      </nav>
+
+      <div class="top-status">
+        <button id="themeToggleBtn" class="theme-toggle" type="button" title="切换白天/黑夜"><span id="themeToggleIcon" aria-hidden="true">☀</span></button>
+        <span id="envBadge" class="env-badge" title="当前运行环境">检查环境…</span>
+        <span id="saveState" class="save-state">就绪</span>
+        <a class="btn mini ghost" href="https://home.shop.example.com" target="_blank" rel="noreferrer">打开电商平台</a>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <!-- 数据引擎未就绪提示（lib 并行开发期间显示） -->
+      <section id="engineBanner" class="banner engine-banner hidden" role="status">
+        <div class="banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.4 18a1.8 1.8 0 0 0 1.6 2.7h16a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.9 1.9 0 0 0-3.4 0z"></path></svg>
+        </div>
+        <div class="banner-main">
+          <b>数据引擎尚未就绪：</b>
+          <span id="engineBannerText">界面可预览，导入 / 分析 / 导出 / 统计功能将在 lib 模块加载后自动启用。</span>
+        </div>
+        <button id="retryLibBtn" class="btn mini ghost" type="button">重新检测</button>
+      </section>
+
+      <!-- 采集/合规提醒 -->
+      <section id="riskBanner" class="banner risk-banner" title="使用提醒：补采只在你点击后按节奏逐个打开商品页读取页面信息（可暂停/停止），请低频、分批、使用专用账号，看到安全验证立即停止；数据只存本机浏览器，不上传服务器。">
+        <div class="banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9.5 11.5 1.8 1.8 3.4-3.6"></path></svg>
+        </div>
+        <div class="banner-main">
+          <b>使用提醒：</b>补采只在你点击后按节奏逐个打开商品页读取页面信息（可暂停/停止），请低频、分批、使用专用账号，
+          看到安全验证立即停止；数据只存本机浏览器，不上传服务器。
+        </div>
+        <button id="dismissBanner" class="link-btn" type="button">知道了</button>
+      </section>
+
+      <!-- v2.1.4：风控告警（触发频控 / 冷却倒计时，DESIGN 19.3） -->
+      <section id="riskAlert" class="banner risk-alert hidden" role="alert">
+        <div class="banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 2.4 18a1.8 1.8 0 0 0 1.6 2.7h16a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.9 1.9 0 0 0-3.4 0z"></path></svg>
+        </div>
+        <div class="banner-main">
+          <b id="riskAlertTitle">已触发电商平台风控，已自动暂停补采</b>
+          <span id="riskAlertText" class="risk-alert-text">冷却中，请稍后重试。</span>
+        </div>
+        <button id="dismissRiskAlert" class="btn mini ghost" type="button">知道了</button>
+      </section>
+
+      <!-- ======================= 页面 1：工作台 ======================= -->
+      <section class="page" data-page="workbench" id="page-workbench">
+        <section class="hero glass" id="importPanel">
+          <div class="hero-glow" aria-hidden="true"></div>
+          <div class="import-collapsed hidden" id="importCollapsed">
+            <span class="import-collapsed-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"></path></svg>
+            </span>
+            <b>已导入 <span id="importCollapsedCount">0</span> 个榜单</b>
+            <span class="import-collapsed-hint">分析补数 · 补采价格 · 核对导出</span>
+            <button id="expandImportBtn" class="btn mini ghost" type="button">重新导入 / 管理</button>
+          </div>
+          <div class="hero-copy">
+            <div class="eyebrow">STEP 01 · 导入榜单</div>
+            <h2>把平台榜单，<span>一键补成可用数据</span></h2>
+            <p>支持任意版本表头：自动挑数据 sheet、识别列、按 SKU 绑定匹配库类目，离线补齐尺寸段/价格段，剩余用浏览器后台取价，最后回填 xlsx 并生成市占率统计。</p>
+            <div class="hero-meta">
+              <span class="hero-chip">自动识别表头</span>
+              <span class="hero-chip">库命中优先</span>
+              <span class="hero-chip">分批可暂停</span>
+              <span class="hero-chip">回填原榜单</span>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button id="pickReportBtn" class="btn primary" type="button">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"></path></svg>
+              导入榜单 xlsx
+            </button>
+            <button id="loadDemoBtn" class="btn ghost hidden" type="button" title="仅本地预览模式可用：载入内置演示榜单">载入演示榜单</button>
+            <button id="collapseImportBtn" class="btn mini ghost hidden" type="button" title="收起导入区，把屏幕留给配对表">收起导入区</button>
+            <span class="drop-hint">或把 .xlsx 文件拖到本页任意位置</span>
+          </div>
+          <input id="reportFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple hidden>
+        </section>
+
+        <section class="kpi-grid" id="kpiBar" aria-label="关键指标"></section>
+        <div id="kpiCompact" class="kpi-compact hidden" aria-label="关键指标摘要">
+          <span id="kpiCompactText" class="kpi-compact-text">—</span>
+          <button id="kpiDetailBtn" class="mini" type="button" title="展开 / 收起指标明细">明细</button>
+        </div>
+
+        <section class="panel glass reports-panel" id="reportsPanel">
+          <details id="reportsDetails" class="reports-details">
+            <summary class="reports-summary">
+              <span class="reports-summary-left">
+                <span class="eyebrow">DATA SOURCES</span>
+                <b>数据源榜单</b>
+                <span class="count-pill" id="reportCount">0</span>
+                <span id="reportsSummaryText" class="reports-summary-text">导入后在这里管理榜单与类目绑定</span>
+              </span>
+              <span class="reports-summary-hint">展开 / 收起</span>
+            </summary>
+            <div class="reports-body">
+              <div class="reports-actions">
+                <button id="diagnoseBtn" class="btn mini ghost" type="button" title="识别不准时手动指定列">表头诊断</button>
+                <button id="clearReportsBtn" class="btn mini ghost danger" type="button">清空榜单</button>
+              </div>
+              <div id="reportCards" class="report-cards">
+                <div class="empty-mini">尚未导入榜单。点击「导入榜单 xlsx」，或把 .xlsx 文件拖进本页。</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="runbar glass">
+          <button id="analyzeBtn" class="btn primary" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-3 8h6l-3 12"></path><path d="M4 13h4"></path><path d="M16 20h4"></path></svg>
+            分析补数
+          </button>
+          <button id="captureBtn" class="btn warm" type="button" title="后台打开 item.shop.example.com 商品页读取价格与尺寸">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><path d="m4.9 4.9 2.1 2.1"></path><path d="m17 17 2.1 2.1"></path><path d="m19.1 4.9-2.1 2.1"></path><path d="m7 17-2.1 2.1"></path></svg>
+            补采价格
+          </button>
+          <button id="pauseBtn" class="btn ghost" type="button" disabled>暂停</button>
+          <button id="stopBtn" class="btn ghost danger" type="button" disabled>停止</button>
+          <button id="confirmReviewBtn" class="btn ghost review-count-btn" type="button" title="把当前筛选结果里所有「需确认」的行标记为已人工确认">确认当前筛选(0)</button>
+          <button id="confirmWriteBtn" class="btn ghost write-count-btn" type="button" disabled title="把当前筛选里自动补齐、尚未写库的行批量写入匹配库（需尺寸段+价格段合法且齐全）">确认写入匹配库(0)</button>
+          <span id="captureModeHint" class="mode-pill" title="采集复核模式可在「设置与帮助」里修改">复核模式：智能 · 最多 3 次</span>
+          <span id="runHint" class="run-hint">先用「分析补数」离线补齐，再按需补采价格。</span>
+          <div class="spacer"></div>
+          <details class="menu" id="exportMenu">
+            <summary class="btn ghost" role="button">导出
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v12"></path><path d="m7 13 5 5 5-5"></path><path d="M5 4h14"></path></svg>
+            </summary>
+            <div class="menu-list">
+              <button id="exportBackfillBtn" class="menu-item" type="button">导出当前榜单回填 xlsx</button>
+              <button id="exportBackfillAllBtn" class="menu-item" type="button">导出全部榜单回填 xlsx</button>
+              <button id="exportResultBtn" class="menu-item" type="button">导出市占率结果 xlsx</button>
+              <button id="exportBackupBtn" class="menu-item" type="button">导出备份 JSON</button>
+              <button id="exportCsvBtn" class="menu-item" type="button">导出当前榜单筛选 CSV</button>
+            </div>
+          </details>
+        </section>
+
+        <!-- v2.1.4：小眼睛预览人工读数浮条（DESIGN 19.3） -->
+        <div id="previewReadBar" class="preview-read hidden">
+          <span class="preview-read-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.9 12S5.5 5.3 12 5.3 22.1 12 22.1 12 18.5 18.7 12 18.7 1.9 12 1.9 12Z"></path><circle cx="12" cy="12" r="3.1"></circle></svg>
+          </span>
+          <span id="previewReadText" class="preview-read-text">预览读数：—</span>
+          <button id="previewApplyBtn" class="btn mini primary" type="button">采用</button>
+          <button id="previewIgnoreBtn" class="btn mini ghost" type="button">忽略</button>
+        </div>
+
+        <!-- v2.1.5：采集异常等待条（跳转/空页 → 等待后自动继续，DESIGN 20.8） -->
+        <div id="anomalyBar" class="anomaly-bar hidden" role="status">
+          <span class="anomaly-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          </span>
+          <span id="anomalyText" class="anomaly-text">检测到异常，等待 60 秒后自动继续（剩余 01:00）</span>
+          <button id="anomalyContinueBtn" class="btn mini primary" type="button">立即继续</button>
+          <button id="anomalyStopBtn" class="btn mini ghost danger" type="button">停止</button>
+        </div>
+
+        <section class="panel glass progress-panel hidden" id="progressPanel">
+          <div class="progress-top">
+            <span id="progressText">准备中…</span>
+            <span class="progress-top-right">
+              <span id="progressPct" class="num"></span>
+              <button id="toggleProgressBtn" class="mini" type="button" title="收起 / 展开进度与日志">收起</button>
+            </span>
+          </div>
+          <div id="progressBody">
+            <div class="progress-bar"><div id="progressFill"></div></div>
+            <div class="run-stats" id="runStats"></div>
+            <div class="log-panel" id="logPanel"></div>
+            <div class="log-actions">
+              <button id="copyLogBtn" class="mini" type="button">复制日志</button>
+              <button id="clearLogBtn" class="mini" type="button">清空日志</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel glass table-panel" id="workbenchTablePanel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <div class="eyebrow">MATCHED ROWS</div>
+              <h3>配对表 <span class="count-pill" id="tableCount">0</span></h3>
+            </div>
+            <div class="table-tools">
+              <select id="statusFilter" class="input select" title="按状态筛选">
+                <option value="all">全部状态</option>
+                <option value="done">已补齐（尺寸+价格）</option>
+                <option value="todo">待补采（缺价格段）</option>
+                <option value="needSize">待补尺寸（缺尺寸段）</option>
+                <option value="sizeReview">尺寸待复核（名称多尺寸/无法确认）</option>
+                <option value="missingSize">缺尺寸段</option>
+                <option value="missingPrice">缺价格段</option>
+                <option value="offSale">已下架（不计入分母）</option>
+                <option value="review">需确认（多采样有疑点）</option>
+                <option value="fail">采集失败</option>
+                <option value="libNew">新 SKU（匹配库没有）</option>
+                <option value="libIncomplete">库数据不全</option>
+                <option value="libPending">待确认写入</option>
+              </select>
+              <input id="searchInput" class="input" type="search" placeholder="搜 SKU / 商品名称 / 品牌 / 店铺 / 型号" autocomplete="off">
+              <select id="pageSize" class="input select small" title="每页行数">
+                <option value="50">50 行/页</option>
+                <option value="100" selected>100 行/页</option>
+                <option value="200">200 行/页</option>
+              </select>
+              <details class="menu col-menu" id="matchColumnMenu">
+                <summary class="btn mini ghost" role="button" title="列显示 / 行高设置">列设置</summary>
+                <div class="menu-list col-menu-list" id="matchColumnPanel"></div>
+              </details>
+            </div>
+          </div>
+          <!-- v2.1.6：快速人工定位 chip（DESIGN 21.3） -->
+          <div class="quick-filter-bar" id="quickFilterBar">
+            <span class="quick-filter-label">人工核验入口</span>
+            <button id="quickReviewChip" class="quick-chip" type="button" data-quick-filter="sizeReview" title="名称含多个尺寸 / 尺寸无法确定，需人工填写规范尺寸段">待人工复核 <b id="quickReviewCount">0</b></button>
+            <button id="quickNoSizeChip" class="quick-chip" type="button" data-quick-filter="missingSize" title="尺寸段为空，点击定位逐条补齐">缺尺寸段 <b id="quickNoSizeCount">0</b></button>
+            <button id="quickNoPriceChip" class="quick-chip" type="button" data-quick-filter="missingPrice" title="价格段为空（价格只认匹配库/页面采集，不猜名称），点击定位">缺价格段 <b id="quickNoPriceCount">0</b></button>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl match-tbl" id="matchBody">
+              <thead>
+                <tr>
+                  <th class="col-rowno">行</th>
+                  <th class="col-sku">SKU</th>
+                  <th class="col-name">商品名称</th>
+                  <th class="col-shop">店铺</th>
+                  <th class="col-brand">品牌</th>
+                  <th class="col-model">型号</th>
+                  <th class="col-package">套餐</th>
+                  <th class="col-band">尺寸段</th>
+                  <th class="col-band wide">价格段</th>
+                  <th class="col-price-now">当前价格(元)</th>
+                  <th class="col-amount">成交金额(万元)</th>
+                  <th class="col-sample">采样</th>
+                  <th class="col-source">数据来源</th>
+                  <th class="col-status">状态</th>
+                  <th class="col-lib-state">入库状态</th>
+                  <th class="col-op">操作</th>
+                </tr>
+              </thead>
+              <tbody id="matchBodyRows"></tbody>
+            </table>
+            <div id="matchEmpty" class="empty">导入榜单并点击「分析补数」后，这里会显示每一行的店铺 / 型号 / 套餐 / 尺寸段 / 价格段与来源。</div>
+          </div>
+          <div class="pager" id="matchPager"></div>
+        </section>
+      </section>
+
+      <!-- ======================= 页面 2：配对总览 ======================= -->
+      <section class="page hidden overview-page" data-page="overview" id="page-overview">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">MATCHED OVERVIEW</div>
+            <h2>配对总览</h2>
+            <p class="page-desc">配对总览 · 全部榜单的配对结果（改完自动写回匹配库）。可直接改品牌 / 型号 / 套餐 / 尺寸段 / 价格段，保存后自动写回匹配库并同步同一 SKU 的其它行。</p>
+          </div>
+          <div class="page-actions">
+            <button id="overviewExportXlsxBtn" class="btn primary" type="button">导出配对表 xlsx</button>
+            <button id="overviewExportCsvBtn" class="btn ghost" type="button">导出 CSV</button>
+          </div>
+        </div>
+
+        <section class="panel glass overview-panel">
+          <div class="panel-head" id="overviewTools">
+            <div class="panel-title">
+              <div class="eyebrow">ALL REPORTS</div>
+              <h3>全部配对行 <span class="count-pill" id="overviewCount">0</span></h3>
+            </div>
+            <div class="table-tools">
+              <select id="overviewStoreFilter" class="input select" title="按店铺 / 绑定类目筛选"></select>
+              <select id="overviewStatusFilter" class="input select" title="按状态筛选">
+                <option value="all">全部状态</option>
+                <option value="done">已补齐（尺寸+价格）</option>
+                <option value="todo">待补采（缺价格段）</option>
+                <option value="needSize">待补尺寸（缺尺寸段）</option>
+                <option value="sizeReview">尺寸待复核（名称多尺寸/无法确认）</option>
+                <option value="missingSize">缺尺寸段</option>
+                <option value="missingPrice">缺价格段</option>
+                <option value="offSale">已下架（不计入分母）</option>
+                <option value="review">需确认（多采样有疑点）</option>
+                <option value="fail">采集失败</option>
+                <option value="libNew">新 SKU（匹配库没有）</option>
+                <option value="libIncomplete">库数据不全</option>
+                <option value="libPending">待确认写入</option>
+              </select>
+              <input id="overviewSearch" class="input" type="search" placeholder="搜 SKU / 名称 / 品牌 / 店铺 / 型号" autocomplete="off">
+              <select id="overviewPageSize" class="input select small" title="每页行数">
+                <option value="200" selected>200 行/页</option>
+                <option value="500">500 行/页</option>
+                <option value="0">全部行</option>
+              </select>
+              <details class="menu col-menu" id="overviewColumnMenu">
+                <summary class="btn mini ghost" role="button" title="列显示 / 行高设置">列设置</summary>
+                <div class="menu-list col-menu-list" id="overviewColumnPanel"></div>
+              </details>
+            </div>
+          </div>
+          <!-- v2.1.6：总览页快速人工定位 chip（DESIGN 21.3） -->
+          <div class="quick-filter-bar" id="overviewQuickFilterBar">
+            <span class="quick-filter-label">人工核验入口</span>
+            <button id="overviewQuickReviewChip" class="quick-chip" type="button" data-quick-filter="sizeReview" data-quick-scope="overview" title="名称含多个尺寸 / 尺寸无法确定，需人工填写规范尺寸段">待人工复核 <b id="overviewQuickReviewCount">0</b></button>
+            <button id="overviewQuickNoSizeChip" class="quick-chip" type="button" data-quick-filter="missingSize" data-quick-scope="overview" title="尺寸段为空，点击定位逐条补齐">缺尺寸段 <b id="overviewQuickNoSizeCount">0</b></button>
+            <button id="overviewQuickNoPriceChip" class="quick-chip" type="button" data-quick-filter="missingPrice" data-quick-scope="overview" title="价格段为空（价格只认匹配库/页面采集，不猜名称），点击定位">缺价格段 <b id="overviewQuickNoPriceCount">0</b></button>
+          </div>
+          <div class="table-wrap overview-table-wrap">
+            <table class="tbl overview-tbl" id="overviewTable">
+              <thead>
+                <tr>
+                  <th class="col-report-row sortable" data-sort="rowNo">行 <span class="sort-mark"></span></th>
+                  <th class="col-sku">SKU</th>
+                  <th class="col-name">商品名称</th>
+                  <th class="col-shop">店铺</th>
+                  <th class="col-brand">品牌</th>
+                  <th class="col-model">型号</th>
+                  <th class="col-package">套餐</th>
+                  <th class="col-band sortable" data-sort="size">尺寸段 <span class="sort-mark"></span></th>
+                  <th class="col-band wide sortable" data-sort="price">价格段 <span class="sort-mark"></span></th>
+                  <th class="col-price-now">当前价格(元)</th>
+                  <th class="col-amount sortable" data-sort="amount">成交金额(万元) <span class="sort-mark"></span></th>
+                  <th class="col-sample">采样</th>
+                  <th class="col-source">数据来源</th>
+                  <th class="col-status">状态</th>
+                  <th class="col-lib-state">入库状态</th>
+                  <th class="col-op">操作</th>
+                </tr>
+              </thead>
+              <tbody id="overviewBody"></tbody>
+            </table>
+            <div id="overviewEmpty" class="empty">还没有导入榜单。先在「工作台」导入 .xlsx 并点「分析补数」，这里会汇总全部榜单的配对结果。</div>
+          </div>
+          <div class="pager" id="overviewPager"></div>
+        </section>
+      </section>
+
+      <!-- ======================= 页面 3：匹配库 ======================= -->
+      <section class="page hidden" data-page="library" id="page-library">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">KNOWLEDGE BASE</div>
+            <h2>内置匹配库</h2>
+            <p class="page-desc">SKU → 尺寸段 / 价格段 的知识库。升级不会覆盖你已有的匹配库（自动快照备份）；确认写入/行内编辑/导入等写库动作都会留操作日志。多类目可用「合并所选类目」去重。</p>
+          </div>
+          <div class="page-actions">
+            <button id="libImportMergeBtn" class="btn primary" type="button">导入并合并</button>
+            <button id="libImportReplaceBtn" class="btn ghost" type="button">导入并覆盖</button>
+            <button id="libExportBtn" class="btn ghost" type="button">导出 xlsx</button>
+            <button id="libLogBtn" class="btn ghost" type="button" title="查看匹配库的写库操作日志">操作日志</button>
+            <button id="libNormalizeBtn" class="btn ghost" type="button" title="把「其他（50英寸）」「3000元3500元」等脏值归一为规范值">归一化脏值</button>
+            <button id="libIssueBtn" class="btn ghost" type="button">冲突 / 重复检查</button>
+            <input id="libFileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+          </div>
+        </div>
+
+        <!-- v2.1.5：匹配库操作日志抽屉（DESIGN 20.10） -->
+        <section id="libLogPanel" class="panel glass lib-log-panel hidden" aria-label="匹配库操作日志">
+          <div class="panel-head">
+            <div class="panel-title">
+              <div class="eyebrow">LIBRARY AUDIT LOG</div>
+              <h3>匹配库操作日志 <span class="count-pill" id="libLogCount">0</span></h3>
+            </div>
+            <div class="table-tools">
+              <input id="libLogSearch" class="input" type="search" placeholder="搜 SKU / 类目 / 类型 / 字段" autocomplete="off">
+              <button id="libLogExportBtn" class="btn mini ghost" type="button">导出 CSV</button>
+              <button id="libLogClearBtn" class="btn mini ghost danger" type="button">清空日志</button>
+              <button id="libLogCloseBtn" class="btn mini ghost" type="button">收起</button>
+            </div>
+          </div>
+          <div id="libLogList" class="lib-log-list"><span class="empty-mini">暂无写库操作日志。</span></div>
+          <p class="hint">最多保留最近 500 条；覆盖确认写入 / 行内编辑 / 导入 / 归一化 / 种子迁移 / 类目维护。日志清空只删日志，不动匹配库记录。</p>
+        </section>
+
+        <section class="kpi-grid" id="libKpi"></section>
+
+        <div class="library-layout">
+          <aside class="panel glass store-panel">
+            <div class="panel-head">
+              <div class="panel-title"><div class="eyebrow">CATEGORIES</div><h3>类目</h3></div>
+              <button id="addStoreBtn" class="btn mini ghost" type="button">＋ 新增</button>
+            </div>
+            <div id="libStoreList" class="store-list"></div>
+          </aside>
+
+          <section class="panel glass library-table-panel">
+            <div class="panel-head">
+              <div class="panel-title">
+                <div class="eyebrow">SKU RECORDS</div>
+                <h3>SKU 明细 <span class="count-pill" id="libTableCount">0</span></h3>
+              </div>
+              <div class="table-tools">
+                <select id="libFilterSelect" class="input select">
+                  <option value="all">全部记录</option>
+                  <option value="full">齐全</option>
+                  <option value="noPrice">缺价格段</option>
+                  <option value="noSize">缺尺寸段</option>
+                  <option value="dirty">脏值</option>
+                </select>
+                <input id="libSearchInput" class="input" type="search" placeholder="搜 SKU / 商品名称 / 品牌" autocomplete="off">
+                <select id="libPageSize" class="input select small">
+                  <option value="50">50 行/页</option>
+                  <option value="100" selected>100 行/页</option>
+                  <option value="200">200 行/页</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="tbl lib-tbl" id="libTable">
+                <thead>
+                  <tr>
+                    <th class="col-sku">SKU</th>
+                    <th class="col-name">商品名称</th>
+                    <th class="col-shop">店铺</th>
+                    <th class="col-brand">品牌</th>
+                    <th class="col-model">型号</th>
+                    <th class="col-package">套餐</th>
+                    <th class="col-band">尺寸段</th>
+                    <th class="col-band wide">价格段</th>
+                    <th class="col-source">数据来源</th>
+                    <th class="col-time">更新时间</th>
+                    <th class="col-op">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="libBody"></tbody>
+              </table>
+              <div id="libEmpty" class="empty">匹配库为空。</div>
+            </div>
+            <div class="pager" id="libPager"></div>
+          </section>
+        </div>
+
+        <section class="panel glass report-panel" id="libReportPanel">
+          <div class="panel-head">
+            <div class="panel-title"><div class="eyebrow">REPORT</div><h3>检查结果</h3></div>
+            <button id="closeLibReportBtn" class="btn mini ghost" type="button">收起</button>
+          </div>
+          <div id="libReportBody" class="report-body"><span class="empty-mini">执行「归一化脏值」或「冲突 / 重复检查」后，这里显示明细。</span></div>
+        </section>
+      </section>
+
+      <!-- ======================= 页面 3：统计看板 ======================= -->
+      <section class="page hidden" data-page="stats" id="page-stats">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">MARKET SHARE DASHBOARD</div>
+            <h2>市占率统计看板</h2>
+            <p class="page-desc">按类目统计品牌销售金额与占比，并给出尺寸段 / 价格段分布与「品牌 × 价格段」交叉矩阵。金额单位：万元。</p>
+          </div>
+          <div class="page-actions">
+            <button id="refreshStatsBtn" class="btn primary" type="button">刷新统计</button>
+            <button id="statsExportBtn" class="btn ghost" type="button">导出统计 xlsx</button>
+          </div>
+        </div>
+
+        <div id="statsMeta" class="stats-meta"></div>
+
+        <div class="stats-tab-bar">
+          <div id="statsStoreTabs" class="stats-tabs" role="tablist" aria-label="类目筛选"></div>
+          <span class="spacer"></span>
+          <input id="statsBrandSearch" class="input stats-brand-search" type="search" placeholder="搜品牌（当前视图）" autocomplete="off">
+          <button id="openStoreReportBtn" class="btn mini ghost" type="button" title="切到工作台并把该类目的榜单设为当前榜单">打开该类目榜单</button>
+        </div>
+
+        <div class="stats-grid">
+          <section class="panel glass span-2">
+            <div class="panel-head">
+              <div class="panel-title"><div class="eyebrow">BY CATEGORY</div><h3>类目品牌市占率 <span id="statsBrandCount" class="count-pill">0</span></h3></div>
+              <div class="matrix-legend" id="statsSortHint">默认按成交金额降序；点击表头可切换排序</div>
+            </div>
+            <div id="storeStats" class="stats-block">
+              <div id="storeBrandTable"><span class="empty-mini">导入并分析榜单后显示。</span></div>
+            </div>
+          </section>
+          <section class="panel glass">
+            <div class="panel-head">
+              <div class="panel-title"><div class="eyebrow">BY SIZE</div><h3>尺寸段分布</h3></div>
+            </div>
+            <div id="sizeChart" class="chart-block"><span class="empty-mini">暂无数据。</span></div>
+          </section>
+          <section class="panel glass">
+            <div class="panel-head">
+              <div class="panel-title"><div class="eyebrow">BY PRICE</div><h3>价格段分布</h3></div>
+            </div>
+            <div id="priceChart" class="chart-block"><span class="empty-mini">暂无数据。</span></div>
+          </section>
+          <section class="panel glass span-full">
+            <div class="panel-head">
+              <div class="panel-title"><div class="eyebrow">MATRIX</div><h3>品牌 × 价格段 交叉矩阵</h3></div>
+              <div class="matrix-legend">颜色越深表示该品牌在该价格段的成交金额越高</div>
+            </div>
+            <div id="matrixTable" class="matrix-block"><span class="empty-mini">导入并分析榜单后显示。</span></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- ======================= 页面 4：设置与帮助 ======================= -->
+      <section class="page hidden" data-page="settings" id="page-settings">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">SETTINGS &amp; HELP</div>
+            <h2>设置与帮助</h2>
+            <p class="page-desc">所有设置只存本机；修改后点「保存设置」立即生效（影响下一次分析与补采）。</p>
+          </div>
+          <div class="page-actions">
+            <button id="saveSettingsBtn" class="btn primary" type="button">保存设置</button>
+            <button id="resetSettingsBtn" class="btn ghost" type="button">恢复默认</button>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">CAPTURE</div><h3>采集节奏</h3></div></div>
+            <div class="form-grid">
+              <label class="field">
+                <span>每次最多采集</span>
+                <input id="setBatch" class="input" type="number" min="0" step="1">
+                <em>0 = 全部；建议先跑 5~10 个验证口径</em>
+              </label>
+              <label class="field">
+                <span>每批上限（防频控）</span>
+                <input id="setBatchLimit" class="input small" type="number" min="5" max="100" step="1">
+                <em>默认 20 条（5~100），下一次采集立即生效；频控风险高时降到 ≤10</em>
+              </label>
+              <label class="field">
+                <span>异常自动继续等待（秒）</span>
+                <input id="setAnomalyWait" class="input small" type="number" min="0" max="600" step="1">
+                <em>跳转/空页等非风控异常等待多久自动继续，默认 60；0=立即跳过</em>
+              </label>
+              <label class="field">
+                <span>每个页面随机间隔（秒）</span>
+                <span class="field-row">
+                  <input id="setDelayMin" class="input small" type="number" min="1" step="1"> ~
+                  <input id="setDelayMax" class="input small" type="number" min="1" step="1">
+                </span>
+                <em>默认 5~10 秒；被频控后建议 ≥15 秒</em>
+              </label>
+              <label class="field">
+                <span>风控冷却（分钟）</span>
+                <input id="setCooldownMinutes" class="input small" type="number" min="1" max="1440" step="1">
+                <em>检测到电商平台风控后自动暂停并冷却，默认 60 分钟</em>
+              </label>
+              <label class="field row">
+                <input id="setAutoPauseOnRisk" type="checkbox">
+                <span>检测到风控自动暂停（推荐）</span>
+              </label>
+              <label class="field">
+                <span>单条失败重试</span>
+                <input id="setRetries" class="input small" type="number" min="0" max="5" step="1">
+                <em>次（默认 1 次）</em>
+              </label>
+              <label class="field">
+                <span>采集复核模式</span>
+                <select id="setCaptureMode" class="input select small">
+                  <option value="smart">智能复核（推荐）</option>
+                  <option value="double">固定双采</option>
+                  <option value="single">单次采样（快）</option>
+                </select>
+                <em>智能：先采 1 次，命中疑点才再采；双采：固定 2 次；单采：旧行为</em>
+              </label>
+              <label class="field">
+                <span>最多采样次数</span>
+                <input id="setMaxSamples" class="input small" type="number" min="2" max="5" step="1">
+                <em>2~5 次（智能 / 双采模式生效）</em>
+              </label>
+              <label class="field">
+                <span>采样容差（%）</span>
+                <input id="setTolerancePct" class="input small" type="number" min="0" max="100" step="0.1">
+                <em>价差 ≤ max(容差元, 价格×容差%) 视为一致</em>
+              </label>
+              <label class="field">
+                <span>采样容差（元）</span>
+                <input id="setToleranceAbs" class="input small" type="number" min="0" step="1">
+                <em>默认 30 元</em>
+              </label>
+              <label class="field">
+                <span>边界敏感距离（%）</span>
+                <input id="setBoundaryMarginPct" class="input small" type="number" min="0" max="50" step="0.1">
+                <em>距价格段边界 ≤ max(10 元, 价格×该比例) 时标记需确认</em>
+              </label>
+              <label class="field row">
+                <input id="setSkipToday" type="checkbox">
+                <span>跳过今天已采过的 SKU</span>
+              </label>
+              <label class="field row">
+                <input id="setKeepTab" type="checkbox">
+                <span>采集结束后保留后台标签页（调试用）</span>
+              </label>
+              <p class="mode-desc">竞品数据无阈值：多采样只做一致性核对（取中位数，不向任何参考值靠拢）；拿不准的行标记「需确认」，由人工在配对表里确认。被电商平台风控时请停 24 小时、换账号/网络，或改用商品页小眼睛预览人工读数。</p>
+            </div>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">PRICE RULE</div><h3>价格口径</h3></div></div>
+            <div class="form-grid">
+              <label class="field">
+                <span>采价优先级</span>
+                <span class="field-row">
+                  <select id="setPrefer1" class="input select small"></select>
+                  <select id="setPrefer2" class="input select small"></select>
+                  <select id="setPrefer3" class="input select small"></select>
+                </span>
+                <em>从高到低：页面有多档价格时优先取哪一档</em>
+              </label>
+              <div class="field">
+                <span>价格段边界口径</span>
+                <span class="field-row radios">
+                  <label class="radio"><input type="radio" name="bandBoundary" value="rightOpen" checked><span>左闭右开 [low, high)</span></label>
+                  <label class="radio"><input type="radio" name="bandBoundary" value="rightClosed"><span>左开右闭 (low, high]</span></label>
+                </span>
+                <em>影响边界值（如 2000 元）归入哪一段</em>
+              </div>
+              <label class="field">
+                <span>合理价下限（元）</span>
+                <input id="setMinPlausible" class="input small" type="number" min="0" step="1">
+                <em>低于该值的数字视为数字片段，不当作价格</em>
+              </label>
+              <label class="field">
+                <span>界面主题</span>
+                <select id="setThemeSelect" class="input select small">
+                  <option value="auto">跟随系统</option>
+                  <option value="light">白天模式</option>
+                  <option value="dark">黑夜模式</option>
+                </select>
+                <em>也可点顶栏 ☀/🌙 快速切换</em>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">HEADER OVERRIDES</div><h3>表头映射记忆</h3></div>
+              <button id="clearOverridesBtn" class="btn mini ghost danger" type="button">清空</button>
+             </div>
+            <div id="overridesList" class="override-list"><span class="empty-mini">还没有手动映射记录。识别不准时在「表头诊断」里点选列，会按文件名记住。</span></div>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">SEED LIBRARY</div><h3>内置匹配库与保护</h3></div>
+              <button id="resetSeedBtn" class="btn mini ghost danger" type="button" title="明确二次确认后用内置新版覆盖当前匹配库（替换前会自动备份）">重置为内置新版</button>
+            </div>
+            <p class="hint" id="seedVersionText">内置匹配库版本：—</p>
+            <p class="hint" id="libraryBackupText">匹配库保护备份：—</p>
+            <p class="hint">v2.1.5 起升级<b>不会自动覆盖 / 替换你的匹配库</b>（不会重建种子、不自动归一化）；会先写 libraryBackup_v215 快照。只有你在这里点两次确认「重置为内置新版」才会整体替换（会保留人工确认记录并自动备份）。</p>
+            <div class="data-actions">
+              <button id="restoreLibraryBackupBtn" class="btn mini ghost" type="button" title="用升级前的 libraryBackup_v215 快照恢复匹配库">从备份恢复匹配库</button>
+            </div>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">DATA</div><h3>数据备份与清理</h3></div></div>
+            <div class="data-actions">
+              <button id="exportBackupBtn2" class="btn ghost" type="button">导出备份 JSON</button>
+              <button id="importBackupBtn" class="btn ghost" type="button">导入备份 JSON</button>
+              <button id="purgeCapturesBtn" class="btn ghost danger" type="button">清空采集缓存</button>
+              <button id="clearSessionBtn" class="btn ghost danger" type="button">清空榜单会话</button>
+              <input id="backupFileInput" type="file" accept=".json,application/json" hidden>
+            </div>
+            <p class="hint">备份包含：匹配库 + 榜单会话 + 采集缓存，可在换电脑后恢复。采集缓存清空不影响匹配库。</p>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">DEBUG</div><h3>调试</h3></div>
+              <button id="copyLastCaptureDebugBtn" class="btn mini ghost" type="button" title="复制最近一次页面采集的候选价格调试 JSON">复制最近一次采集调试 JSON</button>
+              <button id="copyDebugBtn" class="btn mini ghost" type="button">复制调试 JSON</button>
+            </div>
+            <div id="debugBox" class="debug-box">暂无采集数据。</div>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">MODULES</div><h3>模块状态</h3></div>
+              <button id="retryLibBtn2" class="btn mini ghost" type="button">重新检测</button>
+            </div>
+            <div id="moduleStatusList" class="module-list"></div>
+          </section>
+
+          <section class="panel glass span-full">
+            <div class="panel-head"><div class="panel-title"><div class="eyebrow">HELP</div><h3>使用说明（9 步）</h3></div></div>
+            <ol class="help-list">
+              <li><b>安装</b>：Edge 打开 <code>edge://extensions/</code> → 开启「开发人员模式」→「加载解压缩的扩展」→ 选择 <code>extension</code> 文件夹 → 固定到工具栏。</li>
+              <li><b>登录</b>：在同一 Edge 里登录电商平台账号（补采价格需要登录态；建议专用账号，低频使用）。</li>
+              <li><b>导入榜单</b>：工作台点「导入榜单 xlsx」，可一次多选；程序自动识别数据 sheet 与表头，识别不准时点「表头诊断」手动点选列。</li>
+              <li><b>绑定类目</b>：每张榜单卡片会自动建议匹配库类目，可下拉改绑；绑定越准，库命中越高。</li>
+              <li><b>分析补数</b>：点「分析补数」离线补齐（库命中 → 同名推断 → 商品名解析尺寸），剩余行标「待采集」。</li>
+              <li><b>补采价格</b>：点「补采价格」后台按节奏打开商品页取价与尺寸；默认「智能复核」会按需再采 1~2 次核对一致性，可暂停/继续/停止；连续失败会自动暂停。</li>
+              <li><b>复核与核对</b>：多采样不一致或价格贴近分段边界的行会标「需确认」，在配对表点行内「确认」或工具条「确认当前筛选(N)」批量确认；确认后状态回到「已补采」。</li>
+              <li><b>预览商品页</b>：配对表 SKU 右侧的小眼睛图标，鼠标悬停约 0.6 秒会在工作台旁边弹出商品页小窗（独立窗口、不占标签页、不抢焦点），移开自动关闭；点击可固定，再点眼睛或关闭小窗即收起。</li>
+              <li><b>核对导出</b>：表格内可直接改尺寸段/价格段/品牌/型号/套餐（自动写回匹配库）；导出「回填榜单 xlsx」和「市占率结果 xlsx」。</li>
+            </ol>
+            <p class="help-note">合规提醒：本工具只读商品页 DOM，不调用电商平台接口、不提交数据；请低频、分批、使用专用账号，看到安全验证立即停止。数据只存本机 chrome.storage.local。</p>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>识别以 SKU 为准；金额单位万元；状态与来源都由补数流水线统一计算，表格内可人工修正。</span>
+      <span id="footInfo" class="foot-info">数据只存本机</span>
+    </footer>
+  </div>
+
+  <!-- ======================= 表头诊断弹窗 ======================= -->
+  <dialog id="headerDialog" class="dialog dialog-wide">
+    <form method="dialog" class="dialog-form" id="headerForm">
+      <h2>表头诊断</h2>
+      <p class="dialog-desc" id="headerDialogDesc">当自动识别不准时，在这里指定哪一列是 SKU / 商品名称 / 品牌 / 型号 / 套餐 / 成交金额 / 店铺。保存后会按文件名记住。</p>
+      <div class="dialog-subhead">
+        <span>文件：<b id="headerDialogFile">—</b></span>
+        <span>数据 sheet：<b id="headerDialogSheet">—</b></span>
+      </div>
+      <div class="preview-wrap" id="headerPreviewWrap"></div>
+      <div class="mapping-grid" id="headerMapping"></div>
+      <div class="dialog-actions">
+        <button id="headerDialogCancel" class="btn ghost" type="button">取消</button>
+        <button id="headerDialogSave" class="btn primary" type="button">保存映射并重新识别</button>
       </div>
     </form>
   </dialog>
 
-  <dialog id="settingsDialog" class="dialog">
-    <form method="dialog" class="dialogForm" id="settingsForm">
-      <h2>巡检设置</h2>
-      <p class="trackInfo" id="trackInfo">轨道信息加载中…</p>
-      <label class="field">
-        <span>每次最多采集</span>
-        <input id="setBatch" type="number" min="0" step="1" class="input">
-        <em>0 = 全部（按 151 个 SKU 估算约 20–30 分钟）</em>
-      </label>
-      <label class="field">
-        <span>每个页面间隔（秒）</span>
-        <input id="setDelayMin" type="number" min="1" step="1" class="input small"> ~
-        <input id="setDelayMax" type="number" min="1" step="1" class="input small">
-      </label>
-      <label class="field row">
-        <input id="setSkipToday" type="checkbox">
-        <span>跳过今天已经采过的 SKU</span>
-      </label>
-      <label class="field">
-        <span>巡检范围</span>
-        <select id="setScope" class="input">
-          <option value="all">全部类目</option>
-          <option value="current">当前类目</option>
-        </select>
-      </label>
-      <label class="field row">
-        <input id="setKeepTab" type="checkbox">
-        <span>采集结束后保留后台标签页（调试用）</span>
-      </label>
-      <label class="field">
-        <span>采集模式</span>
-        <select id="setPatrolMode" class="input">
-          <option value="foreground">前台小窗（第二轨道，降低后台频控）</option>
-          <option value="background">后台标签页（原轨道）</option>
-          <option value="matrix">矩阵阵列速采（并行开一批页面，批量读写）</option>
-        </select>
-      </label>
-      <div class="matrixSetWrap">
-        <p class="matrixSetHead">矩阵速采参数（只影响「⚡ 矩阵速采」，取价规则不变）</p>
-        <label class="field row">
-          <span>矩阵打开方式</span>
-          <select id="setMatrixWindowMode" class="input" style="width:330px">
-            <option value="windows">真实多窗口：一排商品页窗口沿弧线排开（推荐）</option>
-            <option value="tabs">后台标签页 + 矩阵大屏（粉末动画）</option>
-          </select>
-        </label>
-        <p class="matrixSetTip">真实窗口模式会打开多个浏览器窗口，建议每批 4–6 个；关闭时页面淡出、窗口自动回收。大屏模式才播放粉末动画。</p>
-        <label class="field row">
-          <span>每批同时打开</span>
-          <input id="setMatrixBatch" type="number" min="2" max="12" step="1" class="input small">
-          <em>个窗口/页面（真实窗口建议 4–6；先从小批量试）</em>
-        </label>
-        <label class="field row">
-          <span>开页错开</span>
-          <input id="setMatrixGap" type="number" min="120" max="2000" step="20" class="input small">
-          <em>毫秒/页（错开打开，避免瞬发请求）</em>
-        </label>
-        <label class="field row">
-          <span>批次间隔</span>
-          <input id="setMatrixDelay" type="number" min="0" max="30" step="0.5" class="input small">
-          <em>秒（上一批关闭后等待多久再开下一批）</em>
-        </label>
-        <label class="field row">
-          <input id="setMatrixShatter" type="checkbox">
-          <span>矩阵大屏关闭卡片时播放「碎成粉末、被风吹散」动画（真实窗口模式不适用）</span>
-        </label>
-      </div>
-      <label class="field row">
-        <input id="setAiEnabled" type="checkbox">
-        <span>启用 AI 复核（只做校验；截图只在内存里用完即删）</span>
-      </label>
-      <label class="field">
-        <span>AI 接口</span>
-        <input id="setAiEndpoint" class="input" style="width:270px">
-        <em>模型</em>
-        <input id="setAiModel" class="input small" style="width:140px">
-      </label>
-      <label class="field">
-        <span>AI Key</span>
-        <input id="setAiKey" class="input" type="password" style="width:340px" placeholder="已预配置，一般不用改">
-        <button id="aiTestBtn" class="btn ghost" type="button" style="margin-left:8px">测试 AI</button>
-      </label>
-      <label class="field">
-        <span>AI 复核模式</span>
-        <select id="setAiVerifyMode" class="input">
-          <option value="fallback">仅 DOM 取不到时用 AI</option>
-          <option value="all">每单都让 AI 复核（只记录不一致，不改 DOM 读数）</option>
-          <option value="off">关闭 AI 复核</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>官方API地址</span>
-        <input id="setOfficialApiUrl" class="input" style="width:250px">
-        <em>（桥已开机自启）</em>
-      </label>
-      <div class="field apiField">
-        <span>官方API账号（电商平台 SP-API，多供应商）</span>
-        <p class="apiAccountInfo">每个供应商 / 店铺一个账号。官方价采集时会按顺序尝试所有账号，哪个账号有这个 SKU 的权限就用哪个的价。修改后点「保存」立即生效，不用改文件、不用重启桥。</p>
-        <div id="apiAccountList" class="apiAccountList">
-          <div class="apiAccountInfo">账号状态加载中…</div>
-        </div>
-        <div class="apiActions">
-          <button id="apiAddBtn" class="btn ghost" type="button">+ 新增供应商账号</button>
-          <button id="apiRefreshBtn" class="btn ghost" type="button">刷新账号状态</button>
-        </div>
-        <div id="apiAccountInfo" class="apiAccountInfo"></div>
-      </div>
-      <label class="field">
-        <span>预览悬停延迟</span>
-        <em>鼠标停在眼睛上</em>
-        <input id="setPreviewDelay" type="number" min="300" max="5000" step="100" class="input small">
-        <em>毫秒后弹出商品页小窗（300–5000）</em>
-      </label>
-      <label class="field">
-        <span>价格偏离阈值</span>
-        <em>差价超过</em>
-        <input id="setDeviationLimit" type="number" min="0" step="100" class="input small">
-        <em>元 → 仅提示（不再自动多采）；超过</em>
-        <input id="setDeviationConfirm" type="number" min="0" step="100" class="input small">
-        <em>元标「需人工确认」</em>
-      </label>
-      <div class="field debugField">
-        <span>调试：最近一次采集的原始价格候选</span>
-        <button id="copyDebugBtn" class="btn ghost" type="button">复制调试 JSON</button>
-      </div>
-      <pre id="debugBox" class="debugBox">暂无</pre>
-      <div class="dialogActions">
-        <button id="settingsCancel" class="btn ghost" value="cancel">取消</button>
-        <button id="settingsSave" class="btn primary" value="default">保存</button>
+  <!-- ======================= 通用确认弹窗 ======================= -->
+  <dialog id="confirmDialog" class="dialog">
+    <form method="dialog" class="dialog-form">
+      <h2 id="confirmTitle">确认</h2>
+      <p class="dialog-desc" id="confirmText"></p>
+      <div class="dialog-actions">
+        <button id="confirmCancel" class="btn ghost" type="button">取消</button>
+        <button id="confirmOk" class="btn primary" type="button">确定</button>
       </div>
     </form>
   </dialog>
 
-  <dialog id="helpDialog" class="dialog helpDialog">
-    <div class="dialogForm">
-      <h2>使用说明</h2>
-      <ol class="helpList">
-        <li><b>先装好</b>：打开扩展管理页（Chrome：<code>chrome://extensions/</code>；Edge：<code>edge://extensions/</code>）→ 打开「开发人员模式」→「加载解压缩的扩展」→ 选择 <code>extension</code> 文件夹 → 固定到工具栏。</li>
-        <li><b>采普惠价</b>：在浏览器里登录普通/普惠电商平台账号 → 点扩展图标打开工作台 → 点「普惠号巡检」。默认每批 40 个、间隔 3–6 秒，可随时暂停/继续/停止。</li>
-        <li><b>采会员价</b>：退出账号，登录 <b>PLUS 会员</b>账号 → 再点「会员号巡检」。两列价格会并排显示。</li>
-        <li><b>总览页</b>：点顶部「总览」可看整体进度、各状态数量；点数字筛选查看对应行；表格同样可以手动改价。</li>
-        <li><b>同品比价</b>：点顶部「同品比价」，会按「套餐型号」自动把不同店铺（3C店铺 / 大家电）里的同款产品配成一组（忽略空格、-京仓、大小写），并排对比两边采集到的普惠价 / 会员价；有价差的组会排在最前面并标红，可只看差异、导出比价 CSV。只有未下架且两边都是同一型号的行才会配对。页面顶部还有「<b>采集全部比价 SKU</b>」按钮：一键把这 30 个比价 SKU 用同一个账号、同一条轨道重新采一遍，采集完自动刷新对比。</li>
-        <li><b>汇总上报</b>：在总览勾选要上报的行 → 「汇总选中」→ 行变浅红底色进入「待上报区」→ 「导出待上报 Excel」。</li>
-        <li><b>成交价校验</b>：只记录页面读数与阈值的偏离，不会自动"挑一个接近阈值的值"；差价超过 500 元只提示，超过 1500 元标「需人工确认」。核对无误点价格旁的「确认」→ 状态变「正常」；如需改价点「改」。</li>
-        <li><b>确认 / 改价 / 重采</b>：带「需人工确认」的价格点「确认」→ 状态转「正常」；点「改」手动修正；重采时（单行「重采」或勾选后「重采选中」）会弹窗让你选<b>账号（普惠/会员）</b>和<b>轨道（后台标签页/前台窗口+AI）</b>，可以记住默认选择。</li>
-        <li><b>小眼睛预览</b>：表格右侧「预览」列的眼睛，鼠标悬停会弹出商品页小窗，移开自动关闭；点一下可固定窗口，再点关闭。悬停多久弹出可在「设置 → 预览悬停延迟」里调整（默认 1000 毫秒）。</li>
-        <li><b>下架库</b>：确认商品已下架，点「下架」移入下架库（默认隐藏、下次巡检不再出现；按 SKU 记录，重新导入基表也保留）；在状态筛选「已下架」里可点「恢复」放回来。</li>
-        <li><b>没有 SKU 的行</b>：在表格里直接补（纯数字，自动保存）；也可以补进 Excel 后重新生成基表。</li>
-        <li><b>管理基表</b>：工具栏「管理基表」可直接增删改 SKU、套餐型号、前台价、阈值和类目；可先「导出基表 JSON」备份，改完点「保存修改」立即生效；需要还原就点「恢复内置」。</li>
-        <li><b>导入 Excel 基表</b>：工具栏「导入基表」可以直接选 .xlsx 巡检表（表头要有 sku、套餐型号；列顺序随意；sheet 名=类目），导入时自动按 SKU 去重、重复 SKU 保留最后一条数据；如果阈值写成简单公式（如 <code>=E58-1060</code>）也会自动算出来；导入前会显示「与当前基表对比：新增 SKU / 普惠阈值 / 会员阈值 / 前台价 各多少处变化」。</li>
-        <li><b>轨道切换</b>：运行条最左边「轨道① 后台标签页 / 轨道② 前台窗口+AI / 矩阵③ 阵列速采」可随时切换；三条轨道用的是同一套取价脚本，差别只在打开方式（后台标签页 / 前台小窗 / 并行阵列）和是否跑 AI 复核。</li>
-        <li><b>矩阵速采（新版）</b>：点「⚡ 矩阵速采 · 普惠」或「· 会员」，<b>默认直接打开多个真实商品页窗口</b>，按屏幕宽度沿弧线排开（默认每批 6 个、错开 300ms），整批读完后只写一次存储，然后页面淡出、窗口逐个关闭，再开下一批。真实窗口本身无法碎裂，只能淡出；想保留「碎成粉末」动画，可在设置里把「矩阵打开方式」改成「后台标签页 + 矩阵大屏」，或点状态栏「▣ 矩阵大屏」打开可选 HUD。</li>
-        <li><b>矩阵参数</b>：设置 →「矩阵速采参数」可切换真实多窗口 / 后台标签页+大屏，并调整每批并发数（2–12，真实窗口建议 4–6）、开页错开毫秒、批次间隔和粉末动画开关。并发越高越快，但越容易触发风控；看到「安全验证」请立即调小或停止。</li>
-        <li><b>AI 已预配置</b>：AI 接口、模型、Key 都已写好（数据在本机）；AI 只做校验/兜底，不覆盖 DOM 读数，截图只在内存里用完即删、不保存。</li>
-        <li><b>官方API</b>：API 桥开机自启（Windows 计划任务，与双轨版共用 127.0.0.1:18765），点「官方API采集（普惠）」即可。账号凭据可在「设置 → 官方API账号」里按供应商直接填写 appKey / appSecret / accessToken，点「保存并测试」会用基表里的 SKU 试读一次；token 失效会报「access_token 无效」，重新粘贴新 token 即可，不用改文件。</li>
-        <li><b>取价不准</b>：设置 →「复制调试 JSON」，发给我按页面结构调整识别规则。</li>
-      </ol>
-      <p class="helpNote">数据只存在本机浏览器（chrome.storage.local），不上传服务器。请低频、分批使用，不要做无人值守高频抓取；看到安全验证就停止。</p>
-      <div class="dialogActions">
-        <button id="helpClose" class="btn primary" type="button">知道了</button>
+  <!-- ======================= 通用输入弹窗 ======================= -->
+  <dialog id="promptDialog" class="dialog">
+    <form method="dialog" class="dialog-form">
+      <h2 id="promptTitle">输入</h2>
+      <label class="field block">
+        <span id="promptLabel">名称</span>
+        <input id="promptInput" class="input" type="text" autocomplete="off">
+      </label>
+      <p class="dialog-desc" id="promptHint"></p>
+      <div class="dialog-actions">
+        <button id="promptCancel" class="btn ghost" type="button">取消</button>
+        <button id="promptOk" class="btn primary" type="button">确定</button>
       </div>
-    </div>
+    </form>
   </dialog>
 
-  <div id="toast" class="toast hidden"></div>
+  <!-- v2.1.5：匹配库类目合并 / 去重（DESIGN 20.13） -->
+  <dialog id="mergeStoresDialog" class="dialog dialog-wide">
+    <form method="dialog" id="mergeStoresForm">
+      <div class="dialog-eyebrow">MERGE STORES</div>
+      <h3>合并匹配库类目</h3>
+      <p class="dialog-desc" id="mergeStoresDesc">把多个类目合并为一个并去重；预览不会修改匹配库，执行前会自动备份 libraryBackup_v215，并写入操作日志。</p>
+      <div class="merge-target-row">
+        <label class="field"><span>目标类目</span><select id="mergeStoresTarget" class="input select"></select></label>
+        <label class="field" id="mergeStoresNewNameField"><span>新类目名</span><input id="mergeStoresNewName" class="input" type="text" placeholder="例如：3C店（合并）"></label>
+      </div>
+      <div id="mergeStoresBody" class="merge-stores-body"><div class="hint">请选择要合并的类目。</div></div>
+      <div class="dialog-actions">
+        <button id="mergeStoresCancelBtn" class="btn ghost" type="button">取消</button>
+        <button id="mergeStoresPreviewBtn" class="btn ghost" type="button">预览</button>
+        <button id="mergeStoresApplyBtn" class="btn primary" type="button" disabled>确认合并</button>
+      </div>
+    </form>
+  </dialog>
 
-  <script src="app.js"></script>
+  <!-- v2.1.7：候选价格调试 JSON（价格/类型/候选/位置/刷新记录，UI 不解析价格） -->
+  <dialog id="priceDebugDialog" class="dialog dialog-wide">
+    <form method="dialog" id="priceDebugForm">
+      <div class="dialog-eyebrow">PRICE DEBUG</div>
+      <h3 id="priceDebugTitle">价格候选调试</h3>
+      <p class="dialog-desc">以下为最近一次页面采集结果（lib 已完成选价与口径判定）；UI 只展示原样字段，供核对页面价格元素与候选。</p>
+      <pre id="priceDebugBody" class="price-debug-body">{}</pre>
+      <div class="dialog-actions">
+        <button id="copyPriceDebugBtn" class="btn ghost" type="button">复制 JSON</button>
+        <button id="closePriceDebugBtn" class="btn primary" type="button">关闭</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <!-- v2.1.5：表头列筛选浮层（配对表 / 总览共用，JS 动态填充） -->
+  <div id="colFilterPanel" class="col-filter-panel hidden" role="dialog" aria-label="列筛选">
+    <div class="col-filter-head">
+      <b id="colFilterTitle">列筛选</b>
+      <button id="colFilterCloseBtn" class="mini" type="button" title="关闭">×</button>
+    </div>
+    <div id="colFilterBody" class="col-filter-body"></div>
+    <div class="col-filter-actions">
+      <button id="colFilterClearBtn" class="btn mini ghost" type="button">清除该列筛选</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>

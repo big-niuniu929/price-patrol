@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QA 截图脚本自测页 · 四页导航</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Microsoft YaHei", "Segoe UI", sans-serif; background: #0b1020; color: #e8ecff; }
+  header { display: flex; align-items: center; gap: 18px; padding: 14px 22px; background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg,#4f7cff,#9b5cff); font-weight: 700; }
+  h1 { font-size: 17px; margin: 0; }
+  nav { display: flex; gap: 8px; margin-left: 24px; }
+  nav button { padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color: #c7d0ff; font-size: 14px; cursor: pointer; }
+  nav button.active { background: linear-gradient(135deg,#4f7cff,#9b5cff); color: #fff; border-color: transparent; }
+  main { padding: 22px; }
+  section { display: none; }
+  section.active { display: block; }
+  .kpis { display: flex; gap: 12px; margin-bottom: 18px; }
+  .kpi { flex: 1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 14px; }
+  .kpi b { display: block; font-size: 22px; margin-top: 6px; }
+  .card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  th { color: #9fb0e8; font-weight: 500; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: rgba(79,124,255,.2); color: #9db6ff; }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">市</span>
+  <div><h1>QA 截图脚本自测页</h1></div>
+  <nav>
+    <button data-page="workbench" class="active">工作台</button>
+    <button data-page="library">匹配库</button>
+    <button data-page="stats">统计看板</button>
+    <button data-page="settings">设置与帮助</button>
+  </nav>
+</header>
+<main>
+  <section id="page-workbench" class="active">
+    <div class="kpis">
+      <div class="kpi">文件数<b>4</b></div>
+      <div class="kpi">总行数<b>800</b></div>
+      <div class="kpi">尺寸段覆盖<b>89.3%</b></div>
+      <div class="kpi">待采集<b>612</b></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>行号</th><th>SKU</th><th>商品名称</th><th>尺寸段</th><th>价格段</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td>2</td><td>100200174986</td><td>海信100英寸会议电视…</td><td>98/100英寸</td><td>10000元至15000元</td><td><span class="pill">已匹配</span></td></tr>
+          <tr><td>3</td><td>100262254939</td><td>海信100英寸C位屏…</td><td>98/100英寸</td><td>10000元至15000元</td><td><span class="pill">已匹配</span></td></tr>
+          <tr><td>4</td><td>100084551335</td><td>创维100英寸会议电视…</td><td>98/100英寸</td><td>9000元至10000元</td><td><span class="pill">已匹配</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section id="page-library"><div class="card">匹配库：4 个类目 / 1046 个 SKU / 588 条齐全</div></section>
+  <section id="page-stats"><div class="card">统计看板：品牌金额与占比、尺寸段分布、价格段分布</div></section>
+  <section id="page-settings"><div class="card">设置与帮助：采集节奏、价格口径、数据备份、合规提醒</div></section>
+</main>
+<script>
+  const buttons = Array.from(document.querySelectorAll('nav button[data-page]'));
+  const sections = Array.from(document.querySelectorAll('section'));
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      buttons.forEach((b) => b.classList.toggle('active', b === btn));
+      const key = btn.getAttribute('data-page');
+      sections.forEach((s) => s.classList.toggle('active', s.id === 'page-' + key));
+    });
+  });
+</script>
+</body>
+</html>

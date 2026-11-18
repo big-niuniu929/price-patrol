@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<!--
+  dev-tools 专用：本地模拟「电商平台商品详情页」，用于离线验证 extension/content.js 的取价与取尺寸逻辑。
+  不联网、不引用任何远程资源，只通过 file:// 打开。
+
+  用法：
+    mock-item.html?layout=hand&sku=100200174986
+    layout 取值：hand | main | plus | spec | alt | doctitle | verify | offsale | fragment
+              | strikelabel | mainlabel | crosscheck | modelpackage | titlemodel | variantpanel | riskhome | homejump
+              | sizemulti | sizespec
+              | pricecards | splitprice | hiddenprice | pricerefresh | belowfold | mainonly
+      hand     有到手价 + 电商平台价（标题带 75英寸）
+      main     只有电商平台价（标题带 65英寸）
+      plus     电商平台价 + PLUS会员价（标题带 86英寸）
+      spec     标题无英寸，只有规格参数表「屏幕尺寸：86英寸」（dl/dt/dd 结构）
+      alt      标题/规格都无英寸，只有主图 alt 带 100英寸
+      doctitle 标题/规格/主图 alt 都无英寸，只有 document.title 带 98英寸
+      verify   安全验证（风控）页
+      offsale  商品已下架页（v2.1.5：offSale 分类，不算风控、不冷却）
+      fragment 价格被拆成「￥」+「5」的数字片段（应识别为不可靠价格并给出 reason）
+      strikelabel   del + inline line-through 划线价 + 到手价标签（v2.1）
+      mainlabel     只有「电商平台价」标签、价格节点无 price 类名无 ￥（v2.1 精准标签法）
+      crosscheck    到手价 8999 高于电商平台价 5999（v2.1 交叉校验丢弃 hand）
+      modelpackage  规格参数表含型号（v2.1）；套餐行不再作为套餐来源（v2.1.3 口径修正）
+      titlemodel    标题含型号（v2.1）；标题内存规格不再作为套餐（v2.1.3 口径修正）
+      variantpanel  v2.1.3 截图同款：右侧「系列品/屏幕尺寸/版本」规格选择区，
+                    版本组第 1 项 selected（会议大屏+摄像头【免费送装一体】），价格 到手价 11969/电商平台价 11999
+      riskhome      v2.1.4：被频控后跳转的电商平台商城首页（无商品价格/规格）；
+                    CDP 测试用 ?mockurl=https://www.shop.example.com/ 模拟真实 URL
+      homejump      v2.1.5：同上首页落地页，但语义是「跳转异常、无验证特征」→ content.js 应返回
+                    softAnomaly=true（pageKind=softAnomaly）、risk.hit=false（不算风控，等待后自动继续）
+      sizemulti     v2.1.6：标题含 55/65英寸 多值 + 75MBK7/VH75CAD 型号数字 + 「5000元」；
+                    无规格表尺寸 → size=null + sizeUncertain=true；价格只取 DOM 6999（标题 5000 不算）
+      sizespec      v2.1.6：规格参数表「屏幕尺寸：65英寸」+ 同样的多值/型号标题 → 规格表最高优先取 65
+      pricecards   v2.1.7：真实到手价 5999 + 跨平台比价 8499 + 关联购买 1999 + 推荐 2999
+                    （卡片字号更大）→ 必须只取 5999/hand，卡片被 EXCLUDE_CONTAINER 排除
+      splitprice   v2.1.7：到手价 ¥8607.56 拆成 ￥/8607/.56 多个 span + 「56」片段 → 拼回 8607.56
+      hiddenprice  v2.1.7：隐藏抽屉 4999 + 可见 6999 → 只取可见 6999
+      pricerefresh v2.1.7：到手价 24699 → 25099（测试注入后调用 window.__mockRefreshPrice 触发）
+                    → 最终采用 25099，priceChanges 记 {from:24699,to:25099}
+      belowfold    v2.1.7：首屏无价（价格在 1200px 之后）、推荐卡 2999 在首屏 → 放宽全页取 5999，推荐卡排除
+      mainonly     v2.1.7：只有「电商平台价」标签 5999（无到手价）→ priceKind=main
+
+  干扰项（所有价格布局都有）：划线原价 ￥7999、优惠券 ￥300、满5000减300、5折、12期免息、
+  定金/尾款、已售2.3万+、评价5万+、纯数字角标「5」。content.js 必须全部忽略。
+  注意：本文件属于开发测试脚手架，不是扩展页面，因此可以内联脚本（扩展目录内禁止内联脚本）。
+-->
+<title>电商平台商品详情页 · mock</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.6 "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    color: #333;
+    background: #f4f4f4;
+  }
+  .site-header {
+    height: 36px;
+    line-height: 36px;
+    padding: 0 24px;
+    background: #e3e4e5;
+    border-bottom: 1px solid #ddd;
+    color: #666;
+    font-size: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+  }
+  #app { max-width: 1200px; margin: 16px auto; padding: 0 16px 40px; }
+  .itemInfo-wrap { background: #fff; padding: 20px; border-radius: 4px; }
+  .sku-name h1 { font-size: 22px; line-height: 1.4; margin: 0 0 14px; color: #333; }
+  .summary-price-wrap {
+    background: #f8f8f8;
+    border: 1px solid #eee;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .summary-price .p-price { margin-bottom: 6px; }
+  .price-label { color: #999; margin-right: 10px; font-size: 12px; }
+  .price { color: #e4393c; font-size: 26px; font-weight: 700; }
+  .hand-price { color: #ff6700; }
+  .plus-price .price { color: #b8860b; }
+  .origin-price { color: #999; font-size: 13px; margin: 6px 0; }
+  .p-coupon { margin: 8px 0; color: #e4393c; font-size: 12px; }
+  .p-coupon .price { font-size: 14px; font-weight: 400; }
+  .promo-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .promo-item, .promo-badge {
+    font-size: 12px;
+    color: #e4393c;
+    border: 1px solid #f3c9c9;
+    background: #fff5f5;
+    padding: 1px 8px;
+    border-radius: 2px;
+  }
+  .main-img { text-align: center; padding: 16px; background: #fff; margin-bottom: 16px; border-radius: 4px; }
+  .main-img img { border: 1px solid #eee; max-width: 360px; }
+  .p-parameter, .Ptable { background: #fff; padding: 16px 20px; margin-bottom: 16px; border-radius: 4px; }
+  .p-parameter ul { list-style: none; margin: 0; padding: 0; }
+  .p-parameter li { color: #666; padding: 4px 0; border-bottom: 1px dashed #f0f0f0; }
+  .Ptable-item dl { margin: 0; display: grid; grid-template-columns: 160px 1fr; gap: 6px 0; }
+  .Ptable-item dt { color: #999; }
+  .Ptable-item dd { margin: 0; color: #333; }
+  .detail { background: #fff; padding: 16px 20px; border-radius: 4px; color: #666; }
+  .verify-wrap, .error-page {
+    background: #fff;
+    padding: 60px 20px;
+    text-align: center;
+    border-radius: 4px;
+  }
+  .verify-wrap h2, .error-page h2 { color: #333; }
+  .verify-wrap p, .error-page p { color: #999; }
+</style>
+</head>
+<body>
+<div class="site-header">
+  <span class="user-info" id="ttbar-userinfo">电商平台用户_测试</span>
+  <span>我的订单</span>
+  <span>购物车</span>
+</div>
+<div id="app"></div>
+<script>
+(function () {
+  'use strict';
+
+  var params = new URLSearchParams(location.search);
+  var layout = params.get('layout') || 'hand';
+  var sku = params.get('sku') || '100200174986';
+
+  var PIXEL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+  // 干扰项：优惠券 / 满减 / 折扣 / 期数 / 销量 / 纯数字角标（都不该被当成商品价格）
+  var PRICE_NOISE =
+    '<div class="promo-list">' +
+    '<span class="promo-item">满5000减300</span>' +
+    '<span class="promo-item">5折</span>' +
+    '<span class="promo-item">12期免息</span>' +
+    '<span class="promo-badge">5</span>' +
+    '<span class="promo-item">白条支付立减</span>' +
+    '<span class="promo-item">已售2.3万+</span>' +
+    '<span class="promo-item">评价5万+</span>' +
+    '<span class="promo-item">定金50抵200</span>' +
+    '<span class="promo-item">尾款支付</span>' +
+    '</div>';
+
+  function priceBlock(opts) {
+    var o = opts || {};
+    var rows = '';
+    if (o.main != null) {
+      rows +=
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price J-p-' + sku + '">￥' + o.main + '</span></div>';
+    }
+    if (o.hand != null) {
+      rows +=
+        '<div class="p-price p-hand-price"><span class="price-label">预估到手价</span>' +
+        '<span class="price hand-price J-p-hand">￥' + o.hand + '</span></div>';
+    }
+    if (o.plus != null) {
+      rows +=
+        '<div class="p-price plus-price"><span class="price-label">PLUS会员价</span>' +
+        '<span class="price J-p-plus">￥' + o.plus + '</span></div>';
+    }
+    return (
+      '<div class="summary-price-wrap" id="price">' +
+      '<div class="summary-price">' +
+      rows +
+      '<div class="origin-price"><del>￥7999.00</del></div>' +
+      '<div class="p-coupon"><span class="coupon-label">优惠券</span>' +
+      '<span class="price coupon-price">￥300</span></div>' +
+      '</div>' +
+      PRICE_NOISE +
+      '</div>'
+    );
+  }
+
+  function imgBlock(alt) {
+    return (
+      '<div class="main-img" id="preview">' +
+      '<img id="spec-img" class="main-img-el" src="' + PIXEL + '" alt="' + alt + '" width="320" height="320">' +
+      '</div>'
+    );
+  }
+
+  function paramUl(rows) {
+    if (!rows || !rows.length) return '';
+    return (
+      '<div class="p-parameter"><ul class="parameter2 p-parameter-list">' +
+      rows.map(function (r) { return '<li>' + r + '</li>'; }).join('') +
+      '</ul></div>'
+    );
+  }
+
+  function paramDl(pairs) {
+    if (!pairs || !pairs.length) return '';
+    return (
+      '<div class="Ptable"><div class="Ptable-item"><dl>' +
+      pairs
+        .map(function (p) { return '<dt>' + p[0] + '</dt><dd>' + p[1] + '</dd>'; })
+        .join('') +
+      '</dl></div></div>'
+    );
+  }
+
+  // 模拟电商平台商品页右侧「规格选择区」的一组：标签 + 选项（selectedIndex 为选中项）
+  function variantGroupHtml(label, options, selectedIndex) {
+    return (
+      '<div class="li-group">' +
+      '<div class="li-label">' + label + '</div>' +
+      '<div class="li-items">' +
+      options
+        .map(function (text, i) {
+          return '<span class="li-item' + (i === selectedIndex ? ' selected' : '') + '">' + text + '</span>';
+        })
+        .join('') +
+      '</div></div>'
+    );
+  }
+
+  // 模拟被 302 到「电商平台商城首页」的落地页（无商品价格/规格，也无验证/登录特征）
+  function homeJumpHtml() {
+    return (
+      '<div class="home-page">' +
+      '<div class="home-header">电商平台 首页 我的电商平台 企业采购 客户服务 网站导航 手机电商平台</div>' +
+      '<div class="home-search"><span class="home-logo">电商平台</span>' +
+      '<input class="home-search-input" placeholder="搜索商品">' +
+      '<span class="home-search-btn">搜索</span></div>' +
+      '<div class="home-nav">手机数码 电脑办公 家用电器 服装鞋靴 食品饮料 图书文娱 汽车用品</div>' +
+      '<div class="home-recommend"><h3>为您推荐</h3>' +
+      '<p>这里是电商平台商城首页推荐位（模拟被频控后跳转的落地页），不含商品价格与规格信息。</p></div>' +
+      '<div class="home-footer">电商平台商城 · 正品低价 · 品质保障 · 配送及时 · 轻松购物</div>' +
+      '</div>'
+    );
+  }
+
+  var LAYOUTS = {
+    hand: {
+      docTitle: '【海信75J3D】海信（Hisense）75英寸 会议平板电视 4K超高清 智能会议一体机-电商平台',
+      h1: '海信（Hisense）75英寸 会议平板电视 4K超高清 智能会议一体机 75J3D',
+      price: { main: '5999.00', hand: '5499.00' },
+      params: ['品牌：海信（Hisense）', '屏幕尺寸：75英寸', '产品尺寸：1668×1010×88mm', '分辨率：3840×2160'],
+      alt: '海信（Hisense）75英寸 会议平板电视'
+    },
+    main: {
+      docTitle: '【海信65J3D】海信（Hisense）65英寸 会议平板电视-电商平台',
+      h1: '海信（Hisense）65英寸 会议平板电视 65J3D',
+      price: { main: '4299.00' },
+      params: ['品牌：海信（Hisense）', '屏幕尺寸：65英寸', '产品尺寸：1468×860×88mm'],
+      alt: '海信（Hisense）65英寸 会议平板电视'
+    },
+    plus: {
+      docTitle: '【TCL86V6】TCL 86英寸 会议平板-电商平台',
+      h1: 'TCL 86英寸 会议平板电视 智能会议一体机 86V6',
+      price: { main: '12999.00', plus: '11899.00' },
+      params: ['品牌：TCL', '屏幕尺寸：86英寸', '产品尺寸：1930×1120×80mm'],
+      alt: 'TCL 86英寸 会议平板'
+    },
+    spec: {
+      docTitle: '【海信86J3D】海信（Hisense）智能会议平板 4K超高清-电商平台',
+      h1: '海信（Hisense）智能会议平板电视 4K超高清 智能会议一体机 86J3D',
+      price: { main: '8999.00' },
+      paramsDl: [
+        ['品牌', '海信（Hisense）'],
+        ['屏幕尺寸', '86英寸'],
+        ['产品尺寸', '1930×1120×80mm'],
+        ['分辨率', '3840×2160']
+      ],
+      alt: '海信（Hisense）智能会议平板'
+    },
+    alt: {
+      docTitle: '【品牌B V6】品牌B 智能会议平板 无线传屏-电商平台',
+      h1: '品牌B 智能会议平板 4K超高清 无线传屏 V6经典款',
+      price: { main: '12999.00' },
+      params: ['品牌：品牌B', '产品尺寸：1668×1010×88mm', '接口：HDMI×2'],
+      alt: '品牌B 100英寸 智能会议平板'
+    },
+    doctitle: {
+      docTitle: '【长虹98J3D】长虹（CHANGHONG）98英寸 智能会议平板 4K超高清-电商平台',
+      h1: '长虹（CHANGHONG）智能会议平板电视 4K超高清 会议一体机 98J3D',
+      price: { main: '24999.00' },
+      params: ['品牌：长虹', '产品尺寸：2200×1300×90mm', '接口：HDMI×3'],
+      alt: '长虹（CHANGHONG）智能会议平板'
+    },
+    verify: {
+      docTitle: '安全验证 - 电商平台',
+      html:
+        '<div class="verify-wrap"><h2>安全验证</h2>' +
+        '<p>请完成验证后继续访问</p>' +
+        '<p>拖动滑块完成拼图，验证码 30 秒内有效</p>' +
+        '</div>'
+    },
+    offsale: {
+      docTitle: '很抱歉，该商品已下架 - 电商平台',
+      html:
+        '<div class="error-page"><h2>该商品已下架</h2>' +
+        '<p>抱歉，该商品已下架，为您推荐其他商品</p></div>'
+    },
+    fragment: {
+      docTitle: '【海信75F3】海信（Hisense）75英寸 会议平板-电商平台',
+      h1: '海信（Hisense）75英寸 会议平板电视 75F3',
+      html:
+        '<div class="summary-price-wrap" id="price">' +
+        '<div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">到手价</span>' +
+        '<span class="price-symbol">￥</span><span class="price-num">5</span></div>' +
+        '<div class="p-promo"><span class="promo-item">5折</span></div>' +
+        '</div></div>'
+    },
+
+    // ---- v2.1 新增布局（取价加固 / 型号套餐） ----
+    // ① 划线价（del + inline line-through）+ 到手价标签：划线价 7999 绝不能被选中
+    strikelabel: {
+      docTitle: '【海信75J3D】海信（Hisense）75英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信（Hisense）75英寸 会议平板电视 75J3D</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price J-p-1">￥5999.00</span></div>' +
+        '<div class="p-price p-hand-price"><span class="price-label">预估到手价</span>' +
+        '<span class="price hand-price">￥5499.00</span></div>' +
+        '<div class="origin-line"><span class="old-price-num" style="text-decoration: line-through;">￥7999.00</span></div>' +
+        '<div class="origin-price"><del>￥8199.00</del></div>' +
+        '</div></div></div>' +
+        imgBlock('海信（Hisense）75英寸 会议平板电视') +
+        paramUl(['品牌：海信（Hisense）', '屏幕尺寸：75英寸', '产品尺寸：1668×1010×88mm'])
+    },
+    // ② 只有「电商平台价」标签：价格数字节点没有 price 类名、也没有 ￥，只能靠精准标签法命中
+    mainlabel: {
+      docTitle: '【海信65S6】海信（Hisense）65英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信（Hisense）65英寸 会议平板电视 65S6</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="tag-num">4299.00</span></div>' +
+        '</div></div></div>' +
+        imgBlock('海信（Hisense）65英寸 会议平板电视') +
+        paramUl(['品牌：海信（Hisense）', '屏幕尺寸：65英寸'])
+    },
+    // ③ 交叉校验：到手价 8999 高于电商平台价 5999 → hand 必须被丢弃
+    crosscheck: {
+      docTitle: '【海信75CC】海信（Hisense）75英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信（Hisense）75英寸 会议平板电视 75CC</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price">￥5999.00</span></div>' +
+        '<div class="p-price"><span class="price-label">预估到手价</span>' +
+        '<span class="price">￥8999.00</span></div>' +
+        '</div></div></div>' +
+        imgBlock('海信（Hisense）75英寸 会议平板电视') +
+        paramUl(['品牌：海信（Hisense）', '屏幕尺寸：75英寸'])
+    },
+    // ④ 规格参数表含型号 / 套餐（标题里故意不带型号、套餐）
+    modelpackage: {
+      docTitle: '【海信会议平板】海信（Hisense）75英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信（Hisense）75英寸 会议平板电视 智能会议一体机</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price">￥5999.00</span></div>' +
+        '<div class="p-price p-hand-price"><span class="price-label">预估到手价</span>' +
+        '<span class="price hand-price">￥5499.00</span></div>' +
+        '</div></div></div>' +
+        imgBlock('海信（Hisense）75英寸 会议平板电视') +
+        paramUl([
+          '品牌：海信（Hisense）',
+          '屏幕尺寸：75英寸',
+          '型号：MC75HEE',
+          '套餐：含翻页笔+投屏器+移动推车',
+          '产品尺寸：1668×1010×88mm'
+        ])
+    },
+    // ⑤ 标题里同时带型号与套餐（规格表没有这两项）
+    titlemodel: {
+      docTitle: '【品牌B】品牌B MC86HE 86英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">品牌B MC86HE 86英寸 会议平板 4+64G 含移动支架</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price">￥12999.00</span></div>' +
+        '<div class="p-price p-hand-price"><span class="price-label">预估到手价</span>' +
+        '<span class="price hand-price">￥11899.00</span></div>' +
+        '</div></div></div>' +
+        imgBlock('品牌B 86英寸 会议平板') +
+        paramUl(['品牌：品牌B', '屏幕尺寸：86英寸', '产品尺寸：1930×1120×80mm'])
+    },
+
+    // ---- v2.1.3 新增：与用户截图一致的规格选择区（系列品 / 屏幕尺寸 / 版本）----
+    // 套餐 = 「版本」组里已选中的第 1 项；屏幕尺寸=100英寸 参与尺寸解析；价格读到手价 11969（电商平台价 11999）
+    variantpanel: {
+      docTitle: '【海信100XP3E-PRO】海信100英寸C位屏新品会议电视平板一体机-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信100英寸C位屏新品会议电视平板一体机跨屏 外设选MiniLED防眩光显示屏商显大屏100XP3E-PRO</h1></div>' +
+        priceBlock({ main: '11999.00', hand: '11969.00' }) +
+        '<div id="choose-attrs" class="choose-attrs">' +
+        variantGroupHtml('系列品', ['【行业TOP1】会议电视新标杆XP3E', '【重磅新品】行业闪电新品TOP1'], 0) +
+        variantGroupHtml('屏幕尺寸', ['100英寸 【会议新物种 无线C位屏】', '110英寸 【巨幕旗舰】'], 0) +
+        variantGroupHtml(
+          '版本',
+          [
+            '会议大屏+摄像头【免费送装一体】',
+            '会议大屏+摄像头+投屏器【免费送装一体】',
+            '会议大屏+摄像头+推车【免费送装一体】',
+            '会议大屏+摄像头+投屏器+推车【免费送装一体】',
+            '查看更多'
+          ],
+          0
+        ) +
+        '<div class="li-group"><div class="li-label">颜色</div><div class="li-items">' +
+        '<span class="li-item selected">科技黑</span><span class="li-item">银灰</span></div></div>' +
+        '</div>' +
+        '</div>' +
+        imgBlock('海信100英寸C位屏会议电视平板一体机') +
+        paramUl([
+          '品牌：海信（Hisense）',
+          '型号：100XP3E-PRO',
+          '产品尺寸：2280×1330×90mm',
+          '分辨率：3840×2160'
+        ])
+    },
+
+    // ---- v2.1.4 新增：被电商平台频控后打开商品页会被 302 到「电商平台商城首页」----
+    // CDP 测试通过 ?mockurl=https://www.shop.example.com/ 让 content.js 认为真实 URL 是首页；
+    // 页面本身是首页样式（无商品价格/规格），用于验证 risk/softAnomaly 识别且不解析价格。
+    riskhome: {
+      docTitle: '电商平台(shop.example.com)-正品低价、品质保障、配送及时、轻松购物！',
+      html: homeJumpHtml()
+    },
+    // ---- v2.1.5 新增：跳回电商平台首页但**没有**验证/登录特征 → softAnomaly（不是 risk，不冷却）----
+    homejump: {
+      docTitle: '电商平台(shop.example.com)-正品低价、品质保障、配送及时、轻松购物！',
+      html: homeJumpHtml()
+    },
+
+    // ---- v2.1.6 尺寸严格识别：标题多值/型号数字必须空置 ----
+    // 标题含 55/65 英寸 + 75MBK7/VH75CAD 型号数字 + 「5000元」；
+    // 期望：size=null + sizeUncertain=true（不猜）；价格只取 DOM 里的 6999，标题 5000 不得成为价格。
+    sizemulti: {
+      docTitle: '【海信】海信 VH75CAD 55/65英寸 75MBK7 会议平板-电商平台',
+      h1: '海信 VH75CAD 55/65英寸 75MBK7 会议平板电视 5000元 特惠',
+      price: { main: '6999.00' },
+      params: ['品牌：海信（Hisense）', '产品尺寸：1668×1010×88mm', '分辨率：3840×2160'],
+      alt: '海信 VH75CAD 55/65英寸 75MBK7 会议平板电视'
+    },
+    // 规格参数表 65 英寸 + 标题含型号数字/多值名称 → 必须取规格表的 65（规格表最高优先）
+    sizespec: {
+      docTitle: '【海信】海信 VH75CAD 55/65英寸 75MBK7 会议平板-电商平台',
+      h1: '海信 VH75CAD 55/65英寸 75MBK7 会议平板电视',
+      price: { main: '8999.00' },
+      params: ['品牌：海信（Hisense）', '屏幕尺寸：65英寸', '产品尺寸：1668×1010×88mm'],
+      alt: '海信 VH75CAD 55/65英寸 75MBK7 会议平板电视'
+    },
+
+    // ---- v2.1.7 价格算法（巡检双轨版 v2.1 移植）6 个布局 ----
+    // ① 比价/关联/推荐卡片里也有「到手价」，真实价在价格区（大号红字 5999）
+    pricecards: {
+      docTitle: '【海信65J3D】海信 65英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信 65英寸 会议平板电视 65J3D</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price p-hand-price"><span class="price-label">到手价</span>' +
+        '<span class="price hand-price J-p-hand">￥5999.00</span></div>' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price J-p-main">￥6499.00</span></div>' +
+        '</div></div>' +
+        '<div class="cross_platform_cards"><div class="cross_platform_title">跨平台比价</div>' +
+        '<span class="cross_platform_price" style="font-size:30px">￥8499.00</span></div>' +
+        '<div class="continuous-product"><span class="cp-price" style="font-size:30px">￥1999.00</span></div>' +
+        '<div class="recommend-list"><div class="guess-like">' +
+        '<span class="rec-price" style="font-size:30px">￥2999.00</span></div></div>' +
+        '</div>',
+      params: []
+    },
+    // ② 价格被拆成多个 span（￥/8607/.56），页面另有「56」片段 → 拼回 8607.56，不取片段
+    splitprice: {
+      docTitle: '【海信86J3D】海信 86英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信 86英寸 会议平板电视 86J3D</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price p-hand-price"><span class="price-label">到手价</span>' +
+        '<span class="price hand-price split-price">' +
+        '<span class="sym">￥</span><span class="int">8607</span><span class="dec">.56</span></span></div>' +
+        '</div></div>' +
+        '<div class="promo-list"><span class="promo-item">56</span>' +
+        '<span class="promo-item">分期56</span></div>' +
+        '</div>',
+      params: []
+    },
+    // ③ 隐藏抽屉里 4999 + 可见到手价 6999 → 只取可见的 6999
+    hiddenprice: {
+      docTitle: '【海信75J3D】海信 75英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信 75英寸 会议平板电视 75J3D</h1></div>' +
+        '<div class="hidden-drawer" style="display:none">' +
+        '<span class="price hand-price">￥4999.00</span></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price p-hand-price"><span class="price-label">到手价</span>' +
+        '<span class="price hand-price">￥6999.00</span></div>' +
+        '</div></div>' +
+        '</div>',
+      params: []
+    },
+    // ④ 页面促销计算后价格二次刷新：24699 → 25099（测试用 window.__mockRefreshPrice 触发）
+    pricerefresh: {
+      docTitle: '【海信100J3D】海信 100英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信 100英寸 会议平板电视 100J3D</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price p-hand-price"><span class="price-label">到手价</span>' +
+        '<span class="price hand-price" id="refresh-price">￥24699.00</span></div>' +
+        '</div></div>' +
+        '</div>',
+      params: []
+    },
+    // ⑤ 首屏无价（价格在第二屏），推荐卡在首屏 → 首屏取不到后放宽全页，仍排除推荐卡
+    belowfold: {
+      docTitle: '【海信65J3D】海信 65英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信 65英寸 会议平板电视 65J3D</h1></div>' +
+        '</div>' +
+        '<div class="recommend-list"><span class="rec-price" style="font-size:30px">￥2999.00</span></div>' +
+        '<div class="fold-spacer" style="height:1200px"></div>' +
+        '<div class="itemInfo-wrap" data-top="1200">' +
+        '<div class="p-price p-hand-price"><span class="price-label">到手价</span>' +
+        '<span class="price hand-price">￥5999.00</span></div>' +
+        '</div>',
+      params: []
+    },
+    // ⑥ 只有电商平台价标签（无到手价）→ kind=main
+    mainonly: {
+      docTitle: '【海信65J3D】海信 65英寸 会议平板-电商平台',
+      html:
+        '<div class="itemInfo-wrap">' +
+        '<div class="sku-name" id="name"><h1 class="sku-name">海信 65英寸 会议平板电视 65J3D</h1></div>' +
+        '<div class="summary-price-wrap" id="price"><div class="summary-price">' +
+        '<div class="p-price"><span class="price-label">电商平台价</span>' +
+        '<span class="price">￥5999.00</span></div>' +
+        '</div></div>' +
+        '</div>',
+      params: []
+    }
+  };
+
+  var cfg = LAYOUTS[layout] || LAYOUTS.hand;
+  document.title = cfg.docTitle || '电商平台商品详情页 · mock';
+  document.documentElement.setAttribute('data-mock-layout', layout);
+  document.documentElement.setAttribute('data-mock-sku', sku);
+
+  var html = '';
+  if (cfg.html) {
+    html = cfg.html;
+  } else {
+    html =
+      '<div class="itemInfo-wrap">' +
+      '<div class="sku-name" id="name"><h1 class="sku-name">' + cfg.h1 + '</h1></div>' +
+      priceBlock(cfg.price) +
+      '</div>' +
+      imgBlock(cfg.alt || '') +
+      (cfg.paramsDl ? paramDl(cfg.paramsDl) : paramUl(cfg.params)) +
+      '<div class="detail"><h3>商品介绍</h3>' +
+      '<p>这里是商品介绍的模拟文本：4K 超高清、3840×2160 分辨率、1920 等数字均为干扰项，不是价格。</p>' +
+      '</div>';
+  }
+  document.getElementById('app').innerHTML = html;
+  // v2.1.7：pricerefresh 布局的价格二次刷新钩子（CDP 测试在注入 content.js 后调用）
+  if (layout === 'pricerefresh') {
+    window.__mockRefreshPrice = function () {
+      var el = document.getElementById('refresh-price');
+      if (el) el.textContent = '￥25099.00';
+    };
+  }
+})();
+</script>
+</body>
+</html>
