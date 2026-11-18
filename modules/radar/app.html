@@ -1,0 +1,836 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>竞品价格雷达 · 电商平台竞品价格监控</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.6"/><path d="M12 12 19 7"/><path d="M12 3v1.4M12 19.6V21M3 12h1.4M19.6 12H21"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14 18 8"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12L16 12h5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+    <symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 13c2.5-6 4.5-6 7 0s4.5 6 7 0 4.5-6 6 0"/><path d="M2 19h20"/></symbol>
+    <symbol id="i-compare" viewBox="0 0 24 24"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06A2 2 0 1 1 7.03 4.14l.06.06A1.7 1.7 0 0 0 8.96 4.5H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8.9c.1.37.4.69.77.85H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1.25z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.2-3 4"/><path d="M12 17.5h.01"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M4 4h16"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.2 12S5.8 5.5 12 5.5 21.8 12 21.8 12 18.2 18.5 12 18.5 2.2 12 2.2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.6-6.3"/><path d="M3 4v5h5"/><path d="M12 8v4l2.8 1.8"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.8v14.4L20 12 7 4.8Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2 6.2"/><path d="M20 5v6h-6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/></symbol>
+    <symbol id="i-trend-down" viewBox="0 0 24 24"><path d="m3 7 6 6 4-4 8 8"/><path d="M21 11v6h-6"/></symbol>
+    <symbol id="i-trend-up" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-8"/><path d="M21 13V7h-6"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="2.4"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 0 4 22.5v-17Z"/><path d="M4 5.5v14"/><path d="M8 7h8M8 11h8"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8L3 5Z"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 24 24"><path d="M8 5v14M8 5 4 9M8 5l4 4"/><path d="M16 19V5M16 19l4-4M16 19l-4-4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></symbol>
+  </svg>
+
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand">
+        <span class="brand-mark"><svg class="icon"><use href="#i-radar"/></svg></span>
+        <span class="brand-text">
+          <b>竞品价格雷达</b>
+          <em>PriceRadar</em>
+        </span>
+      </div>
+
+      <nav class="nav" aria-label="主导航">
+        <button type="button" class="nav-item active" data-view="dashboard">
+          <svg class="icon"><use href="#i-pulse"/></svg><span>总览</span>
+        </button>
+        <button type="button" class="nav-item" data-view="analytics">
+          <svg class="icon"><use href="#i-chart"/></svg><span>分析</span>
+        </button>
+        <button type="button" class="nav-item" data-view="volatility">
+          <svg class="icon"><use href="#i-wave"/></svg><span>波动</span>
+        </button>
+        <button type="button" class="nav-item" data-view="watchlist">
+          <svg class="icon"><use href="#i-grid"/></svg><span>监控清单</span><i class="nav-count" id="navWatchCount">0</i>
+        </button>
+        <button type="button" class="nav-item" data-view="alerts">
+          <svg class="icon"><use href="#i-bell"/></svg><span>异动中心</span><i class="nav-count hot" id="navAlertCount">0</i>
+        </button>
+        <button type="button" class="nav-item" data-view="runs">
+          <svg class="icon"><use href="#i-play"/></svg><span>采集任务</span><i class="nav-dot hidden" id="navRunDot"></i>
+        </button>
+      </nav>
+
+      <div class="side-group">
+        <div class="side-group-title">数据</div>
+        <button type="button" class="side-tool" id="importBtn"><svg class="icon"><use href="#i-upload"/></svg><span>导入备份</span></button>
+        <button type="button" class="side-tool" id="exportBtn"><svg class="icon"><use href="#i-download"/></svg><span>导出 JSON</span></button>
+        <button type="button" class="side-tool" id="exportCsvBtn"><svg class="icon"><use href="#i-download"/></svg><span>导出 CSV</span></button>
+      </div>
+
+      <div class="side-group">
+        <div class="side-group-title">设置</div>
+        <button type="button" class="side-tool" id="settingsBtn"><svg class="icon"><use href="#i-settings"/></svg><span>采集与预警规则</span></button>
+        <button type="button" class="side-tool" id="helpBtn"><svg class="icon"><use href="#i-help"/></svg><span>使用说明</span></button>
+      </div>
+
+      <div class="side-foot">
+        <div class="side-foot-line"><svg class="icon"><use href="#i-db"/></svg><span id="storageInfo">本机存储</span></div>
+        <p class="side-risk">手动触发 · 低频采集 · 只读页面<br>数据只保存在本机浏览器</p>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button type="button" class="icon-btn only-mobile" id="menuBtn" title="菜单"><svg class="icon"><use href="#i-menu"/></svg></button>
+          <div class="page-head">
+            <h1 id="viewTitle">总览</h1>
+            <p id="viewSub">竞品价格态势与今日异动</p>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <span class="pill" id="accountPill"><span class="dot"></span>账号：未采集</span>
+          <span class="pill ghost" id="dataPill"><span class="dot ok"></span>本机数据</span>
+          <button type="button" class="btn primary sm" id="quickRunBtn"><svg class="icon"><use href="#i-play"/></svg>开始采集</button>
+          <button type="button" class="icon-btn" id="topSettingsBtn" title="设置"><svg class="icon"><use href="#i-settings"/></svg></button>
+        </div>
+      </header>
+
+      <main class="content" id="content">
+        <!-- ================= 总览 ================= -->
+        <section class="view" id="viewDashboard">
+          <div class="hero">
+            <div class="hero-main">
+              <div class="hero-kicker"><span class="live-dot"></span><span id="heroKicker">监控待命</span></div>
+              <h2><span id="heroBig">—</span> <small>个竞品价格点</small></h2>
+              <p class="hero-sub" id="heroSub">正在加载监控清单…</p>
+              <div class="hero-actions">
+                <button type="button" class="btn primary" id="heroRunBtn"><svg class="icon"><use href="#i-play"/></svg>开始采集</button>
+                <button type="button" class="btn ghost-light" id="heroAlertBtn"><svg class="icon"><use href="#i-bell"/></svg>查看异动</button>
+                <button type="button" class="btn ghost-light" id="heroAddBtn"><svg class="icon"><use href="#i-plus"/></svg>添加监控</button>
+              </div>
+            </div>
+            <div class="hero-viz" aria-hidden="true">
+              <div class="radar-scope"><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i><i class="cross h"></i><i class="cross v"></i><i class="sweep"></i><i class="blip b1"></i><i class="blip b2"></i><i class="blip b3"></i><i class="core"></i></div>
+            </div>
+          </div>
+
+          <section class="kpi-grid" id="kpiGrid">
+            <button type="button" class="kpi" data-kpi="monitor"><span class="kpi-label">监控 SKU</span><b class="kpi-num" id="kpiMonitor">0</b><span class="kpi-foot" id="kpiMonitorSub">—</span></button>
+            <button type="button" class="kpi" data-kpi="today"><span class="kpi-label">今日已采</span><b class="kpi-num" id="kpiToday">0</b><span class="kpi-foot" id="kpiTodaySub">—</span></button>
+            <button type="button" class="kpi" data-kpi="alerts"><span class="kpi-label">今日异动</span><b class="kpi-num" id="kpiAlerts">0</b><span class="kpi-foot" id="kpiAlertsSub">—</span></button>
+            <button type="button" class="kpi down" data-kpi="drop"><span class="kpi-label">降价提醒</span><b class="kpi-num" id="kpiDrop">0</b><span class="kpi-foot" id="kpiDropSub">—</span></button>
+            <button type="button" class="kpi up" data-kpi="rise"><span class="kpi-label">涨价提醒</span><b class="kpi-num" id="kpiRise">0</b><span class="kpi-foot" id="kpiRiseSub">—</span></button>
+            <button type="button" class="kpi warn" data-kpi="fail"><span class="kpi-label">采集异常</span><b class="kpi-num" id="kpiFail">0</b><span class="kpi-foot" id="kpiFailSub">—</span></button>
+          </section>
+
+          <div class="dash-grid">
+            <section class="card brand-card">
+              <div class="card-head"><h3>品牌监控分布</h3><span class="card-hint" id="brandCountHint">—</span></div>
+              <div class="brand-bars" id="brandBars"></div>
+            </section>
+            <section class="card alert-card">
+              <div class="card-head"><h3>最新异动</h3><button type="button" class="link-btn" id="dashAllAlerts">全部 →</button></div>
+              <div class="alert-mini-list" id="dashAlerts"></div>
+            </section>
+          </div>
+
+          <div class="dash-grid insights-grid">
+            <section class="card">
+              <div class="card-head"><h3>价格带分布</h3><button type="button" class="link-btn" id="dashToAnalytics">分析 →</button></div>
+              <div class="band-mini" id="dashBands"></div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h3>同尺寸最低价</h3><button type="button" class="link-btn" id="dashToWatchlist2">清单 →</button></div>
+              <div class="size-lowest" id="dashSizeLowest"></div>
+            </section>
+          </div>
+
+          <section class="card">
+            <div class="card-head">
+              <h3>价格变动榜</h3>
+              <div class="card-tools">
+                <span class="card-hint">按相对基准价波动排序</span>
+                <button type="button" class="link-btn" id="dashToWatch">去清单 →</button>
+              </div>
+            </div>
+            <div class="table-wrap compact">
+              <table class="data-table">
+                <thead>
+                  <tr><th>竞品</th><th>SKU</th><th class="num">基准价</th><th class="num">最新价</th><th class="num">波动</th><th>采集时间</th><th></th></tr>
+                </thead>
+                <tbody id="dashChangeBody"></tbody>
+              </table>
+              <div class="empty hidden" id="emptyChanges">还没有采集数据，先跑一次采集就能看到价格波动。</div>
+            </div>
+          </section>
+
+          <div class="dash-grid lower">
+            <section class="card">
+              <div class="card-head"><h3>采集概况</h3></div>
+              <div class="run-brief" id="dashRunBrief"></div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h3>最近一次任务</h3><button type="button" class="link-btn" id="dashToRuns">任务记录 →</button></div>
+              <div class="last-run" id="dashLastRun"></div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ================= 分析 ================= -->
+        <section class="view hidden" id="viewAnalytics">
+          <section class="card analytics-head">
+            <div class="analytics-title">
+              <h2>竞品价格分析</h2>
+              <p>按品牌 / 尺寸 / 价格带看价格结构、变化和同尺寸锚点</p>
+            </div>
+            <div class="analytics-filters">
+              <label class="mini-field"><span>类型</span><select id="anaCategory" class="input sm"><option value="all">全部类型</option></select></label>
+              <label class="mini-field"><span>尺寸</span><select id="anaSize" class="input sm"><option value="all">全部尺寸</option></select></label>
+              <label class="mini-field"><span>口径</span><select id="anaBasis" class="input sm"><option value="latest">最新价</option><option value="base">基准价</option></select></label>
+              <button type="button" class="btn ghost sm" id="anaExportBtn"><svg class="icon"><use href="#i-download"/></svg>导出分析 CSV</button>
+            </div>
+          </section>
+
+          <section class="kpi-grid analytics-kpi">
+            <div class="kpi"><span class="kpi-label">竞品均价</span><b class="kpi-num" id="anaAvg">—</b><span class="kpi-foot" id="anaAvgSub">—</span></div>
+            <div class="kpi"><span class="kpi-label">价格中位数</span><b class="kpi-num" id="anaMedian">—</b><span class="kpi-foot" id="anaMedianSub">—</span></div>
+            <div class="kpi"><span class="kpi-label">价格带</span><b class="kpi-num" id="anaBandCount">—</b><span class="kpi-foot" id="anaBandSub">—</span></div>
+            <div class="kpi"><span class="kpi-label">数据覆盖</span><b class="kpi-num" id="anaCoverage">—</b><span class="kpi-foot" id="anaCoverageSub">—</span></div>
+          </section>
+
+          <div class="analytics-grid">
+            <section class="card">
+              <div class="card-head"><h3>价格带分布</h3><span class="card-hint" id="anaBandHint">—</span></div>
+              <div class="band-donut-wrap">
+                <div class="band-donut" id="anaDonut"><span class="donut-center"><b>0</b><em>个 SKU</em></span></div>
+                <div class="band-legend" id="anaBandLegend"></div>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h3>品牌均价对比</h3><span class="card-hint" id="anaBrandHint">—</span></div>
+              <div class="brand-value-bars" id="anaBrandBars"></div>
+            </section>
+          </div>
+
+          <section class="card">
+            <div class="card-head"><h3>尺寸 × 品牌 均价热力图</h3><span class="card-hint">颜色越暖价格越高；点单元格筛选清单</span></div>
+            <div class="heatmap-wrap" id="anaHeatmap"></div>
+          </section>
+
+          <div class="analytics-grid">
+            <section class="card">
+              <div class="card-head"><h3>各尺寸价格锚点</h3><span class="card-hint">同尺寸的均价 / 最低价</span></div>
+              <div class="table-wrap compact">
+                <table class="data-table">
+                  <thead><tr><th>尺寸</th><th class="num">SKU</th><th class="num">均价</th><th class="num">中位价</th><th>最低价</th><th class="num">价差</th></tr></thead>
+                  <tbody id="anaSizeRows"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h3>品牌概览</h3><span class="card-hint">按均价排序</span></div>
+              <div class="table-wrap compact">
+                <table class="data-table">
+                  <thead><tr><th>品牌</th><th class="num">SKU</th><th class="num">均价</th><th class="num">最低</th><th class="num">最高</th><th class="num">覆盖</th></tr></thead>
+                  <tbody id="anaBrandRows"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <!-- ================= 波动看板 ================= -->
+        <section class="view hidden" id="viewVolatility">
+          <section class="card analytics-head">
+            <div class="analytics-title">
+              <h2>市场波动</h2>
+              <p>每个 SKU 的价格波动 + 按尺寸段 / 系统 / 品牌 / 类型聚合的市场趋势</p>
+            </div>
+            <div class="analytics-filters">
+              <label class="mini-field"><span>维度</span><select id="volDim" class="input sm">
+                <option value="size">尺寸段</option>
+                <option value="system">系统</option>
+                <option value="brand">品牌</option>
+                <option value="category">类型</option>
+              </select></label>
+              <label class="mini-field"><span>指标</span><select id="volMetric" class="input sm">
+                <option value="index">价格指数（首月=100）</option>
+                <option value="avg">均价</option>
+              </select></label>
+              <label class="mini-field"><span>类型</span><select id="volCategory" class="input sm"><option value="all">全部类型</option></select></label>
+            </div>
+          </section>
+
+          <section class="kpi-grid analytics-kpi">
+            <div class="kpi"><span class="kpi-label">市场均价</span><b class="kpi-num" id="volAvg">—</b><span class="kpi-foot" id="volAvgSub">—</span></div>
+            <div class="kpi"><span class="kpi-label">较上期</span><b class="kpi-num" id="volChange">—</b><span class="kpi-foot" id="volChangeSub">—</span></div>
+            <div class="kpi"><span class="kpi-label">市场波动率</span><b class="kpi-num" id="volVolatility">—</b><span class="kpi-foot" id="volVolatilitySub">—</span></div>
+            <div class="kpi"><span class="kpi-label">上涨 / 下跌</span><b class="kpi-num" id="volBreadth">—</b><span class="kpi-foot" id="volBreadthSub">—</span></div>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h3 id="volChartTitle">市场趋势</h3><span class="vol-legend" id="volLegend"></span></div>
+            <div class="vol-chart" id="volChart"></div>
+            <p class="tiny vol-hint" id="volChartHint">—</p>
+          </section>
+
+          <div class="analytics-grid">
+            <section class="card">
+              <div class="card-head"><h3>分组波动</h3><span class="card-hint">当前均价 vs 上期</span></div>
+              <div class="table-wrap compact">
+                <table class="data-table">
+                  <thead><tr><th>分组</th><th class="num">SKU</th><th class="num">当前均价</th><th class="num">上期</th><th class="num">环比</th><th class="num">波动率</th></tr></thead>
+                  <tbody id="volGroupRows"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h3>波动最大的 SKU</h3><span class="card-hint">按历史波动率</span></div>
+              <div class="vol-top-list" id="volTopSkus"></div>
+            </section>
+          </div>
+
+          <section class="card">
+            <div class="card-head"><h3>每个 SKU 的价格波动</h3><span class="card-hint">点击行看走势；默认按波动率排序</span></div>
+            <div class="vol-toolbar">
+              <label class="search-box"><svg class="icon"><use href="#i-search"/></svg><input id="volSearch" type="search" placeholder="搜品牌 / 型号 / SKU"></label>
+              <label class="mini-field"><span>排序</span><select id="volSort" class="input sm">
+                <option value="volatility">波动率</option>
+                <option value="change">累计变动</option>
+                <option value="drawdown">最大回撤</option>
+                <option value="latest">最新价</option>
+              </select></label>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table vol-table">
+                <thead><tr><th>竞品</th><th>SKU</th><th class="num">最新价</th><th class="num">基准价</th><th class="num">累计变动</th><th class="num">波动率</th><th class="num">最大回撤</th><th>近况</th></tr></thead>
+                <tbody id="volSkuRows"></tbody>
+              </table>
+              <div class="empty hidden" id="emptyVol"><svg class="icon"><use href="#i-wave"/></svg><p>还没有足够的波动数据</p><span>多采集几次，或确认导入的月度历史价。</span></div>
+            </div>
+            <div class="table-foot"><span id="volSkuCount">—</span><span class="spacer"></span><span>波动率 = 月度价格变化的离散程度；回撤 = 从历史高点回落的最大幅度</span></div>
+          </section>
+        </section>
+
+        <!-- ================= 监控清单 ================= -->
+        <section class="view hidden" id="viewWatchlist">
+          <section class="run-panel" id="runPanel">
+            <div class="run-panel-top">
+              <div class="run-mode" id="runModeSeg" role="group" aria-label="采集模式">
+                <button type="button" class="seg-btn active" data-mode="background"><svg class="icon"><use href="#i-grid"/></svg>后台标签页</button>
+                <button type="button" class="seg-btn" data-mode="foreground"><svg class="icon"><use href="#i-eye"/></svg>前台窗口 + AI</button>
+              </div>
+              <label class="mini-field"><span>范围</span>
+                <select id="runScope" class="input sm">
+                  <option value="filtered">当前筛选</option>
+                  <option value="all">全部监控</option>
+                  <option value="selected">仅勾选</option>
+                </select>
+              </label>
+              <label class="mini-field"><span>本批最多</span><input id="runBatch" class="input sm num" type="number" min="0" step="1" title="0 = 不限制"></label>
+              <div class="run-actions">
+                <button type="button" class="btn ghost" id="recheckBtn" title="忽略「跳过今天已采集」，把当前范围内还没下架的行再采一遍（已下架仍然跳过）"><svg class="icon"><use href="#i-refresh"/></svg>重新核验</button>
+                <button type="button" class="btn primary" id="startRunBtn"><svg class="icon"><use href="#i-play"/></svg>开始采集</button>
+                <button type="button" class="btn ghost" id="pauseRunBtn" disabled><svg class="icon"><use href="#i-pause"/></svg>暂停</button>
+                <button type="button" class="btn ghost danger" id="stopRunBtn" disabled><svg class="icon"><use href="#i-stop"/></svg>停止</button>
+                <button type="button" class="btn ghost" id="confirmRunBtn" disabled title="把本次批量采集的最新价写入今日记录表（日期列），下一轮波动以记录表最近日期列为基准"><svg class="icon"><use href="#i-check"/></svg>写入今日记录</button>
+              </div>
+            </div>
+            <div class="run-panel-bottom">
+              <div class="progress-track"><div class="progress-fill" id="runProgressFill"></div></div>
+              <span class="progress-text" id="runProgressText">尚未开始</span>
+              <span class="run-baseline-hint">采完点「写入今日记录」→ 本批最新价写入今天这一列，下一轮波动以记录表最近日期列为基准</span>
+            </div>
+            <div class="run-mini-log" id="runMiniLog">采集日志会显示在这里：只读主价格区，取不到就记录失败，不猜价。</div>
+          </section>
+
+          <section class="list-toolbar">
+            <div class="brand-chips" id="brandChips"></div>
+            <div class="filter-row">
+              <label class="mini-field"><span>类型</span><select id="filterCategory" class="input sm"><option value="all">全部类型</option></select></label>
+              <label class="mini-field"><span>尺寸</span><select id="filterSize" class="input sm"><option value="all">全部尺寸</option></select></label>
+              <label class="mini-field"><span>系列</span><select id="filterSeries" class="input sm"><option value="all">全部系列</option></select></label>
+              <label class="mini-field"><span>系统</span><select id="filterSystem" class="input sm"><option value="all">全部系统</option></select></label>
+              <label class="mini-field"><span>价格带</span><select id="filterBand" class="input sm"><option value="all">全部价格带</option></select></label>
+              <label class="mini-field"><span>状态</span><select id="filterStatus" class="input sm">
+                <option value="all">全部状态</option>
+                <option value="alert">有异动</option>
+                <option value="review">待核对</option>
+                <option value="fail">采集异常</option>
+                <option value="unavailable">不可售 / 无货</option>
+                <option value="offline">已下架</option>
+                <option value="captured">已采集</option>
+                <option value="never">未采集</option>
+                <option value="ignored">已忽略</option>
+              </select></label>
+              <label class="mini-field"><span>标签</span><select id="filterTag" class="input sm"><option value="all">全部标签</option></select></label>
+              <label class="search-box"><svg class="icon"><use href="#i-search"/></svg><input id="searchInput" type="search" placeholder="搜品牌 / 型号 / SKU / 系列"></label>
+              <button type="button" class="btn ghost sm" id="clearFiltersBtn">清空筛选</button>
+              <span class="spacer"></span>
+              <button type="button" class="btn ghost sm" id="compareSelectedBtn" disabled><svg class="icon"><use href="#i-compare"/></svg>对比</button>
+              <button type="button" class="btn ghost sm" id="collectSelectedBtn" disabled><svg class="icon"><use href="#i-refresh"/></svg>采集选中</button>
+              <button type="button" class="btn ghost sm" id="recordsBtn" title="查看/导出记录表：按日期记录每次确认的价格（日期 × SKU），最近日期列就是下一轮波动基准"><svg class="icon"><use href="#i-history"/></svg>记录表（0）</button>
+              <button type="button" class="btn ghost sm" id="exportLatestBtn" title="按基表原始顺序导出当前筛选的最新采集数据为 CSV（Excel 可直接打开，含序号/基准价/最新价/采集时间/较基准/状态/商品链接）"><svg class="icon"><use href="#i-download"/></svg>导出最新数据</button>
+              <button type="button" class="btn sm" id="addWatchBtn"><svg class="icon"><use href="#i-plus"/></svg>添加监控</button>
+            </div>
+          </section>
+
+          <section class="card table-card">
+            <div class="table-meta">
+              <span id="watchCaption">—</span>
+              <span class="spacer"></span>
+              <label class="mini-field"><span>密度</span><button type="button" class="btn ghost xs" id="densityBtn">紧凑</button></label>
+              <label class="mini-check"><input type="checkbox" id="hideOfflineChk"><span>隐藏已下架</span></label>
+              <span class="table-legend"><i class="legend-dot down"></i>降价 <i class="legend-dot up"></i>涨价 <i class="legend-dot warn"></i>待核对</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table watch-table" id="watchTable">
+                <thead>
+                  <tr>
+                    <th class="col-check"><input type="checkbox" id="selectAllChk" title="全选当前筛选"></th>
+                    <th class="sortable" data-sort="brand">品牌</th>
+                    <th class="sortable" data-sort="category">类型</th>
+                    <th class="sortable" data-sort="size">尺寸 / 系统</th>
+                    <th>型号</th>
+                    <th class="sortable" data-sort="sku">SKU</th>
+                    <th class="num sortable" data-sort="base">基准价</th>
+                    <th class="num sortable" data-sort="latest">最新价</th>
+                    <th class="num sortable" data-sort="delta">较基准</th>
+                    <th class="sortable" data-sort="band">价格带</th>
+                    <th class="sortable" data-sort="peer">同尺寸</th>
+                    <th>近况</th>
+                    <th class="sortable" data-sort="updated">更新于</th>
+                    <th class="sortable" data-sort="status">状态</th>
+                    <th class="col-op">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="watchTableBody"></tbody>
+              </table>
+              <div class="empty hidden" id="emptyWatch">
+                <svg class="icon"><use href="#i-radar"/></svg>
+                <p>没有符合条件的竞品 SKU</p>
+                <span>试试清空筛选，或点右上角「添加监控」手动加一个 SKU。</span>
+              </div>
+            </div>
+            <div class="table-foot">
+              <span id="watchFootInfo">—</span>
+              <span class="spacer"></span>
+              <span id="dataSourceNote">数据源：线上竞争数据分析（月度）.xlsx</span>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= 异动中心 ================= -->
+        <section class="view hidden" id="viewAlerts">
+          <section class="card alerts-head">
+            <div class="alert-tabs" id="alertTabs" role="tablist">
+              <button type="button" class="alert-tab active" data-status="new">未处理 <i id="alertTabNew">0</i></button>
+              <button type="button" class="alert-tab" data-status="handled">已处理 <i id="alertTabHandled">0</i></button>
+              <button type="button" class="alert-tab" data-status="ignored">已忽略 <i id="alertTabIgnored">0</i></button>
+              <button type="button" class="alert-tab" data-status="all">全部 <i id="alertTabAll">0</i></button>
+            </div>
+            <div class="alert-tools">
+              <select id="alertTypeFilter" class="input sm">
+                <option value="all">全部类型</option>
+                <option value="drop">降价</option>
+                <option value="rise">涨价</option>
+                <option value="newLow">历史新低</option>
+                <option value="fail">采集异常</option>
+                <option value="offline">已下架</option>
+                <option value="verify">安全验证</option>
+              </select>
+              <select id="alertLevelFilter" class="input sm">
+                <option value="all">全部级别</option>
+                <option value="critical">紧急</option>
+                <option value="warn">关注</option>
+                <option value="info">提示</option>
+              </select>
+              <button type="button" class="btn ghost sm" id="markAllReadBtn">全部标为已处理</button>
+            </div>
+          </section>
+          <div class="alert-list" id="alertList"></div>
+          <div class="empty hidden" id="emptyAlerts">
+            <svg class="icon"><use href="#i-bell"/></svg>
+            <p>这里还没有异动</p>
+            <span>采集后如果价格相对基准价 / 上次采集变化超过阈值，就会自动生成提醒。</span>
+          </div>
+        </section>
+
+        <!-- ================= 采集任务 ================= -->
+        <section class="view hidden" id="viewRuns">
+          <section class="card run-current" id="currentRunPanel">
+            <div class="card-head"><h3>当前任务</h3><span class="card-hint" id="currentRunHint">空闲</span></div>
+            <div class="current-run-body">
+              <div class="progress-ring" id="currentRing"><span id="currentRingText">0%</span></div>
+              <div class="current-run-info">
+                <div class="current-run-title" id="currentRunTitle">尚未开始采集</div>
+                <div class="current-run-sub" id="currentRunSub">在「监控清单」里选择范围后开始采集；也可以直接点右上角「开始采集」。</div>
+                <div class="current-run-bar"><div class="progress-track"><div class="progress-fill" id="currentRunBar"></div></div></div>
+                <div class="current-run-stats" id="currentRunStats"></div>
+              </div>
+            </div>
+            <pre class="console" id="runConsole">[待命] 采集日志会实时显示在这里。</pre>
+          </section>
+
+          <section class="card">
+            <div class="card-head"><h3>任务记录</h3><span class="card-hint">最近 20 次</span></div>
+            <div class="table-wrap compact">
+              <table class="data-table">
+                <thead><tr><th>开始时间</th><th>模式</th><th class="num">任务数</th><th class="num">成功</th><th class="num">失败</th><th>账号</th><th>耗时</th></tr></thead>
+                <tbody id="runHistoryBody"></tbody>
+              </table>
+              <div class="empty hidden" id="emptyRuns">还没有任务记录。采集完成后这里会留下每次任务的汇总。</div>
+            </div>
+          </section>
+
+          <section class="card info-card">
+            <div class="card-head"><h3>采集是怎么跑的</h3></div>
+            <ol class="info-list">
+              <li><b>只读页面：</b>逐个打开电商平台商品页，只读 DOM 里的价格，不点击、不提交订单、不调用电商平台接口。</li>
+              <li><b>锁价格区：</b>只在商品主价格区（product-price / summary-price 等）取「到手价」，自动排除跨平台比价卡片、关联购买、推荐和广告位。</li>
+              <li><b>不猜价：</b>读数不稳定就继续等；页面没价、风控验证、商品下架都如实记录，不会拿相近的数字凑一个结果。</li>
+              <li><b>低频：</b>默认每个 SKU 间隔 3–6 秒，可暂停/停止；连续失败会自动暂停。看到安全验证请立即停止。</li>
+            </ol>
+          </section>
+        </section>
+      </main>
+
+      <footer class="foot">
+        <span>竞品价格雷达 v2.1 · 数据只存本机浏览器 · 采集基于电商平台商品页公开价格，请低频使用</span>
+        <span id="baseInfo">监控清单加载中…</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 勾选操作条 -->
+  <div class="selection-bar hidden" id="selectionBar">
+    <span class="selection-text" id="selectionText">已选 0 个</span>
+    <button type="button" class="btn ghost sm" id="compareSelectedBarBtn" disabled><svg class="icon"><use href="#i-compare"/></svg>对比</button>
+    <button type="button" class="btn ghost sm" id="collectSelectedBarBtn"><svg class="icon"><use href="#i-refresh"/></svg>采集</button>
+    <button type="button" class="btn ghost sm" id="clearSelectionBtn">取消</button>
+  </div>
+
+  <!-- 采集悬浮卡 -->
+  <div class="run-dock hidden" id="runDock">
+    <div class="dock-head"><span class="live-dot"></span><b id="dockTitle">采集进行中</b><span class="spacer"></span><button type="button" class="icon-btn xs" id="dockToggle" title="收起/展开"><svg class="icon"><use href="#i-chevron"/></svg></button></div>
+    <div class="dock-bar"><div class="progress-fill" id="dockFill"></div></div>
+    <div class="dock-meta"><span id="dockText">—</span><span id="dockPct">0%</span></div>
+    <div class="dock-actions">
+      <button type="button" class="btn ghost xs" id="dockPause">暂停</button>
+      <button type="button" class="btn ghost xs danger" id="dockStop">停止</button>
+    </div>
+    <div class="dock-log" id="dockLog"></div>
+  </div>
+
+  <!-- 抽屉：SKU 详情 -->
+  <div class="drawer-mask hidden" id="drawerMask"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-label="SKU 价格详情">
+    <div class="drawer-head">
+      <div class="drawer-title-wrap">
+        <div class="drawer-tags" id="drawerTags"></div>
+        <h2 id="drawerModel">—</h2>
+        <div class="drawer-sku-line"><span id="drawerSku">—</span><button type="button" class="icon-btn xs" id="drawerCopySku" title="复制 SKU"><svg class="icon"><use href="#i-copy"/></svg></button><span class="buy-kind" id="drawerKind">—</span></div>
+      </div>
+      <button type="button" class="icon-btn" id="drawerClose" title="关闭"><svg class="icon"><use href="#i-x"/></svg></button>
+    </div>
+
+    <div class="drawer-scroll">
+      <div class="drawer-price">
+        <div class="price-main"><span class="cur">¥</span><b id="drawerPrice">—</b></div>
+        <div class="price-delta" id="drawerDelta">—</div>
+        <div class="price-meta" id="drawerPriceMeta">尚未采集</div>
+      </div>
+
+      <div class="stat-mini">
+        <div><span>基准价</span><b id="drawerBase">—</b><em id="drawerBaseSrc"></em></div>
+        <div><span>历史最低</span><b id="drawerLow">—</b></div>
+        <div><span>历史最高</span><b id="drawerHigh">—</b></div>
+        <div><span>历史均价</span><b id="drawerAvg">—</b></div>
+      </div>
+
+      <div class="peer-strip" id="drawerPeer"></div>
+
+      <div class="drawer-actions">
+        <button type="button" class="btn primary sm" id="drawerCaptureBtn"><svg class="icon"><use href="#i-play"/></svg>立即采集</button>
+        <button type="button" class="btn ghost sm" id="drawerOpenBtn"><svg class="icon"><use href="#i-external"/></svg>打开商品页</button>
+        <button type="button" class="btn ghost sm" id="drawerIgnoreBtn">忽略监控</button>
+        <button type="button" class="btn ghost sm" id="drawerOfflineBtn">标记已下架</button>
+        <button type="button" class="btn ghost sm" id="drawerConfirmBtn">确认当前价为下期基准</button>
+      </div>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head"><h3>价格走势</h3><span>导入的历史价 + 每次采集</span></div>
+        <div class="chart-wrap" id="drawerChart"></div>
+        <div class="chart-legend"><i class="legend-line import"></i>导入历史价 <i class="legend-line capture"></i>采集价 <i class="legend-dot alert"></i>异动</div>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head"><h3>基准价</h3><span>异动判断以基准价为参照</span></div>
+        <div class="baseline-editor">
+          <input type="number" class="input" id="drawerBaselineInput" min="0" step="0.01" placeholder="手动填写基准价">
+          <button type="button" class="btn ghost sm" id="drawerBaselineSave">保存</button>
+          <button type="button" class="btn ghost sm" id="drawerBaselineLatest">用最新价</button>
+          <button type="button" class="btn ghost sm" id="drawerBaselineImport">用导入价</button>
+          <button type="button" class="btn ghost sm" id="drawerBaselineAuto">恢复自动</button>
+        </div>
+        <p class="tiny" id="drawerBaselineHint">自动基准：优先用导入历史的最新月份价，没有历史价时用首次采集价。</p>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head"><h3>采集记录</h3><span id="drawerCaptureCount">0 条</span></div>
+        <div class="cap-list" id="drawerCaptureList"></div>
+      </section>
+
+      <section class="drawer-section">
+        <div class="drawer-section-head"><h3>跟进备注</h3></div>
+        <textarea class="textarea" id="drawerNote" rows="3" placeholder="例如：对方 11 月大促后价格没回调，需重点跟。"></textarea>
+        <div class="row-end"><button type="button" class="btn ghost sm" id="drawerNoteSave">保存备注</button></div>
+      </section>
+
+      <details class="drawer-debug" id="drawerDebug">
+        <summary>调试信息（最近一次取价的原始候选）</summary>
+        <pre id="drawerRaw">暂无</pre>
+      </details>
+    </div>
+  </aside>
+
+  <!-- 设置 -->
+  <dialog id="settingsDialog" class="dialog">
+    <form method="dialog" class="dialog-body" id="settingsForm">
+      <div class="dialog-head"><h2>采集与预警规则</h2><button type="button" class="icon-btn" id="settingsClose"><svg class="icon"><use href="#i-x"/></svg></button></div>
+      <div class="dialog-scroll">
+        <fieldset class="set-section">
+          <legend>采集</legend>
+          <div class="set-grid">
+            <label class="set-field"><span>默认轨道</span>
+              <select id="setMode" class="input">
+                <option value="background">后台标签页（不弹窗，可继续用电脑）</option>
+                <option value="foreground">前台窗口 + AI 复核（会抢焦点）</option>
+              </select>
+            </label>
+            <label class="set-field"><span>取价口径</span>
+              <select id="setPriceBasis" class="input">
+                <option value="hand">到手价优先（推荐，竞品实际成交价）</option>
+                <option value="main">电商平台价优先（页面标价）</option>
+                <option value="plus">PLUS / 会员价优先</option>
+              </select>
+            </label>
+            <label class="set-field"><span>每次最多采集</span><input id="setBatch" type="number" min="0" step="1" class="input"><em>0 = 全部（176 个 SKU 约 20–25 分钟）</em></label>
+            <label class="set-field inline"><span>页面间隔</span><input id="setDelayMin" type="number" min="1" step="1" class="input num"> ~ <input id="setDelayMax" type="number" min="1" step="1" class="input num"> 秒</label>
+            <label class="set-check"><input id="setSkipToday" type="checkbox"><span>跳过今天已经采过的 SKU</span></label>
+            <label class="set-check"><input id="setKeepTab" type="checkbox"><span>采集结束后保留后台标签页（调试用）</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="set-section">
+          <legend>异动预警</legend>
+          <div class="set-grid">
+            <label class="set-field"><span>较基准价偏离</span><input id="setBaseAlertPct" type="number" min="0.5" step="0.5" class="input num"><em>% 以上生成提醒</em></label>
+            <label class="set-field"><span>大幅异动</span><input id="setBigAlertPct" type="number" min="1" step="1" class="input num"><em>% 以上标记紧急</em></label>
+            <label class="set-field"><span>较上次采集变动</span><input id="setCaptureAlertPct" type="number" min="0.5" step="0.5" class="input num"><em>% 以上生成提醒</em></label>
+            <label class="set-check"><input id="setNewLowAlert" type="checkbox"><span>跌到历史新低时提醒</span></label>
+            <label class="set-check"><input id="setFailAlert" type="checkbox"><span>采集异常（失败/下架/风控）也提醒</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="set-section">
+          <legend>交互</legend>
+          <div class="set-grid">
+            <label class="set-field"><span>预览悬停延迟</span><input id="setPreviewDelay" type="number" min="300" max="5000" step="100" class="input num"><em>毫秒后弹出商品页小窗</em></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="set-section">
+          <legend>AI 复核（可选）</legend>
+          <p class="set-note">默认关闭，只用 DOM 取价。开启后 AI 只做校验/兜底，不会覆盖 DOM 读数；截图只在内存里裁剪使用、不落盘。需要自己填可用的 OpenAI 兼容接口。</p>
+          <div class="set-grid">
+            <label class="set-check"><input id="setAiEnabled" type="checkbox"><span>启用 AI 辅助</span></label>
+            <label class="set-field"><span>接口地址</span><input id="setAiEndpoint" class="input wide" placeholder="https://api.example.com/v1"></label>
+            <label class="set-field"><span>模型</span><input id="setAiModel" class="input" placeholder="deepseek-chat"></label>
+            <label class="set-field"><span>API Key</span><input id="setAiKey" class="input wide" type="password" placeholder="只存本机，不会上传"></label>
+            <label class="set-field"><span>复核模式</span>
+              <select id="setAiMode" class="input">
+                <option value="fallback">仅 DOM 取不到时用 AI 兜底</option>
+                <option value="all">每单都让 AI 复核（只记录不一致）</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="set-section">
+          <legend>本机数据</legend>
+          <div class="data-actions">
+            <button type="button" class="btn ghost sm" id="setExportBtn"><svg class="icon"><use href="#i-download"/></svg>导出备份</button>
+            <button type="button" class="btn ghost sm" id="setImportBtn"><svg class="icon"><use href="#i-upload"/></svg><span>导入备份</span></button>
+            <button type="button" class="btn ghost sm" id="setClearCapturesBtn">清空采集记录</button>
+            <button type="button" class="btn ghost sm" id="setResetAlertsBtn">清空异动</button>
+            <button type="button" class="btn ghost sm danger" id="setResetAllBtn">重置全部本地数据</button>
+          </div>
+          <p class="tiny" id="storageUsage">存储占用 —</p>
+        </fieldset>
+
+        <fieldset class="set-section">
+          <legend>调试</legend>
+          <div class="data-actions">
+            <button type="button" class="btn ghost sm" id="copyDebugBtn"><svg class="icon"><use href="#i-copy"/></svg>复制最近一次取价 JSON</button>
+          </div>
+          <pre class="debug-box" id="debugBox">暂无采集记录</pre>
+        </fieldset>
+      </div>
+      <div class="dialog-foot">
+        <span class="dialog-foot-hint">设置会保存在本机浏览器。</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="settingsCancel">取消</button>
+        <button type="button" class="btn primary" id="settingsSave">保存设置</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 添加监控 -->
+  <dialog id="addDialog" class="dialog narrow">
+    <form method="dialog" class="dialog-body" id="addForm">
+      <div class="dialog-head"><h2>添加竞品监控</h2><button type="button" class="icon-btn" id="addClose"><svg class="icon"><use href="#i-x"/></svg></button></div>
+      <div class="dialog-scroll">
+        <label class="set-field"><span>电商平台 SKU / 商品链接 *</span><input id="addSkuInput" class="input wide" placeholder="例如 100307302352 或 https://item.shop.example.com/100307302352.html"></label>
+        <div class="set-grid two">
+          <label class="set-field"><span>品牌</span><input id="addBrand" class="input" placeholder="选填"></label>
+          <label class="set-field"><span>类型</span><input id="addCategory" class="input" placeholder="如 会议平板（含摄麦）"></label>
+          <label class="set-field"><span>尺寸</span><input id="addSize" class="input" placeholder="如 75英寸"></label>
+          <label class="set-field"><span>型号</span><input id="addModel" class="input" placeholder="选填"></label>
+        </div>
+        <label class="set-field"><span>备注</span><input id="addNote" class="input wide" placeholder="选填，比如对标机型 / 重点竞品"></label>
+        <p class="set-note">添加后基准价默认取它首次采集到的价格；也可以稍后在详情里手动设基准价。</p>
+      </div>
+      <div class="dialog-foot">
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="addCancel">取消</button>
+        <button type="button" class="btn ghost" id="addOnlyBtn">仅添加</button>
+        <button type="button" class="btn primary" id="addAndCollectBtn">添加并采集</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 对比 -->
+  <dialog id="compareDialog" class="dialog compare-dialog">
+    <div class="dialog-body">
+      <div class="dialog-head"><h2>竞品价格对比</h2><button type="button" class="icon-btn" id="compareClose"><svg class="icon"><use href="#i-x"/></svg></button></div>
+      <div class="dialog-scroll">
+        <p class="compare-hint" id="compareHint">以各自基准价 = 100 归一化，方便看相对走势。</p>
+        <div class="compare-chart" id="compareChart"></div>
+        <div class="compare-legend" id="compareLegend"></div>
+        <div class="table-wrap compact">
+          <table class="data-table">
+            <thead><tr><th>竞品</th><th class="num">最新价</th><th class="num">基准价</th><th class="num">较基准</th><th class="num">同尺寸排名</th><th class="num">历史最低</th></tr></thead>
+            <tbody id="compareTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="dialog-foot"><span class="dialog-foot-hint">最多同时对比 4 个 SKU</span><span class="spacer"></span><button type="button" class="btn primary" id="compareOk">关闭</button></div>
+    </div>
+  </dialog>
+
+  <!-- 记录表 -->
+  <dialog id="recordsDialog" class="dialog">
+    <div class="dialog-body">
+      <div class="dialog-head"><h2>记录表（日期 × SKU · 波动基准）</h2><button type="button" class="icon-btn" id="recordsClose"><svg class="icon"><use href="#i-x"/></svg></button></div>
+      <div class="dialog-scroll">
+        <p class="dialog-foot-hint" id="recordsSummary">—</p>
+        <div class="table-wrap compact">
+          <table class="data-table records-table">
+            <thead><tr id="recordsHeadRow"><th>#</th><th>品牌</th><th>类型</th><th>型号</th><th>SKU</th></tr></thead>
+            <tbody id="recordsTableBody"></tbody>
+          </table>
+        </div>
+        <p class="dialog-foot-hint">「写入今日记录」= 把本次批量采集的最新价批量写进今天的日期列；每一次确认都会新增一列日期。下一次采集的「较基准」百分比以每行最近日期列的价格为准。清空记录表会退回导入历史 / 首次采集价。</p>
+      </div>
+      <div class="dialog-foot"><span class="dialog-foot-hint" id="recordsFootHint"></span><span class="spacer"></span>
+        <button type="button" class="btn ghost" id="recordsClearBtn"><svg class="icon"><use href="#i-stop"/></svg>清空记录表</button>
+        <button type="button" class="btn ghost" id="recordsExportBtn"><svg class="icon"><use href="#i-download"/></svg>导出记录表 CSV</button>
+        <button type="button" class="btn primary" id="recordsOk">关闭</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 帮助 -->
+  <dialog id="helpDialog" class="dialog">
+    <div class="dialog-body">
+      <div class="dialog-head"><h2>使用说明</h2><button type="button" class="icon-btn" id="helpClose"><svg class="icon"><use href="#i-x"/></svg></button></div>
+      <div class="dialog-scroll help-scroll">
+        <h3>一分钟上手</h3>
+        <ol>
+          <li>Edge 打开 <code>edge://extensions/</code> → 打开「开发人员模式」→「加载解压缩的扩展」→ 选择 <code>竞品价格雷达\extension</code> → 固定到工具栏。</li>
+          <li>点扩展图标打开工作台。内置监控清单来自《线上竞争数据分析（月度）.xlsx》，共 176 个竞品 SKU。</li>
+          <li>先登录电商平台账号，在「监控清单」里选范围（当前筛选 / 全部），点「开始采集」。默认后台标签页逐个采，不弹窗，可继续用电脑。</li>
+          <li>采完看「总览」：今日异动、降价/涨价、价格变动榜。点任意行看价格走势和采集记录。</li>
+          <li><b>写入今日记录（日期记录表）：</b>采集完点「写入今日记录」，会把<b>本批所有成功采集到的最新价一次性批量写入今天这一列</b>（不需要一个个 SKU 手填）；每次确认新增一天记录，下一轮采集的「较基准」百分比以每行<b>最近日期列</b>的价格为基础。点「记录表」按钮可查看「日期 × SKU」矩阵、导出 CSV、清空。</li>
+          <li><b>导出最新数据：</b>「监控清单」右上角有「导出最新数据」，把当前筛选结果导成 CSV（Excel 可直接打开），行顺序按基表原始顺序排列（序号=基表行号），含基准价、最新价、采集时间、较基准%、状态、标签、备注和商品链接。</li>
+          <li>异动阈值在「设置 → 异动预警」里调；采集间隔默认 3–6 秒；每次最多可先设 10 个试用。</li>
+        </ol>
+        <h3>取价规则（重点）</h3>
+        <ul>
+          <li><b>锁主价格区：</b>只在商品价格区里找「到手价」（旧版 product-price / summary-price / #price，2026 新版 page-right-price / product-price--main 等），不再全页扫价。</li>
+          <li><b>排除诱饵：</b>跨平台比价卡片、关联购买/常购、推荐/广告/榜单/足迹等模块里的「到手价」全部拉黑。</li>
+          <li><b>只认可见：</b>隐藏元素、屏幕外、零尺寸的候选一律跳过。</li>
+          <li><b>拼接数字：</b>¥8,607 + .56 会拼成 8607.56，拒绝 56、.56、5折、满5000减500 这类片段。</li>
+          <li><b>等定格：</b>连续 3 次读数一致才算稳定，之后还会复核页面二次刷新的最终价。</li>
+          <li><b>不猜价：</b>取不到就记失败/待核对，不会拿一个"看着合理"的价格凑数。</li>
+        </ul>
+        <h3>数据与安全</h3>
+        <ul>
+          <li>采集只读页面 DOM，不点击、不提交订单、不调用电商平台接口。</li>
+          <li>所有数据只保存在本机 <code>chrome.storage.local</code>，不上传服务器；截图不保存。</li>
+          <li>低频使用（3–6 秒/个），分批、可暂停；看到「安全验证」立即停止，休息一段时间再试。</li>
+          <li>在 <code>edge://extensions/</code> 里「移除」扩展会清空本地数据；更新代码只点「重新加载」，换路径前先导出备份。</li>
+        </ul>
+        <h3>常见问题</h3>
+        <ul>
+          <li><b>价格读错？</b>设置 → 调试 →「复制最近一次取价 JSON」，里面包含候选价格、字号、位置，便于按页面结构调整规则。</li>
+          <li><b>一直超时？</b>确认已登录、能正常打开电商平台商品页；把每批数量调小、间隔加大再试。</li>
+          <li><b>页面改版？</b>把调试 JSON 保留下来，调整 <code>content.js</code> 里的主价格区选择器或排除规则即可。</li>
+          <li><b>想换清单？</b>改工作区 Excel 后运行 <code>python tools/build_watchlist.py</code> 重新生成 <code>data/competitor-skus.json</code>。</li>
+        </ul>
+      </div>
+      <div class="dialog-foot"><span class="spacer"></span><button type="button" class="btn primary" id="helpOk">知道了</button></div>
+    </div>
+  </dialog>
+
+  <!-- 通用确认 -->
+  <dialog id="confirmDialog" class="dialog narrow confirm-dialog">
+    <div class="dialog-body">
+      <div class="dialog-head"><h2 id="confirmTitle">确认</h2></div>
+      <div class="dialog-scroll"><p id="confirmText" class="confirm-text">—</p></div>
+      <div class="dialog-foot">
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" id="confirmCancel">取消</button>
+        <button type="button" class="btn primary" id="confirmOk">确定</button>
+      </div>
+    </div>
+  </dialog>
+
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+
+

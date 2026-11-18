@@ -1,0 +1,947 @@
+{
+  "schema": "price-platform.deep-business.v1",
+  "generatedAt": "2026-11-17T07:54:55.352Z",
+  "env": {
+    "browserPath": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "browserVersion": "Edg/157.0.4341.60",
+    "cdpPort": 9575
+  },
+  "target": {
+    "platformDir": "~/Desktop/三合一\\价格监控平台",
+    "extId": "iegegmaeojncdljmeacnkcpmjilladhd",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  "summary": {
+    "total": 54,
+    "passed": 54,
+    "failed": 0,
+    "sections": {
+      "env": {
+        "total": 3,
+        "passed": 3,
+        "failed": 0
+      },
+      "share": {
+        "total": 23,
+        "passed": 23,
+        "failed": 0
+      },
+      "radar": {
+        "total": 28,
+        "passed": 28,
+        "failed": 0
+      }
+    },
+    "fatal": ""
+  },
+  "samples": {
+    "xlsxRank": "~/Desktop/三合一\\价格监控平台\\qa\\fixtures\\materials\\test-backfill.xlsx",
+    "xlsxBackfill": "~/Desktop/三合一\\价格监控平台\\qa\\fixtures\\materials\\回填_11月-会议平板_20261106-125446.xlsx",
+    "xlsxMonthly": "~/Desktop/三合一\\价格监控平台\\qa\\fixtures\\materials\\线上竞争数据分析（月度）.xlsx"
+  },
+  "mocks": {
+    "jdItemFetchIntercepted": 3,
+    "served": [
+      "product https://item.shop.example.com/100302202082.html",
+      "product https://item.shop.example.com/100302202082.html",
+      "offline https://item.shop.example.com/100302202034.html"
+    ],
+    "errors": []
+  },
+  "dialogsAutoAccepted": [],
+  "consoleErrors": {
+    "share": {
+      "mark": 0,
+      "items": [],
+      "runtimeErrors": []
+    },
+    "radar": {
+      "mark": 0,
+      "items": []
+    }
+  },
+  "checks": [
+    {
+      "id": "E1",
+      "section": "env",
+      "title": "headless Edge + 扩展加载（extDir=~/Desktop/三合一\\价格监控平台）",
+      "ok": true,
+      "detail": "Edg/157.0.4341.60 · CDP 9575",
+      "error": "",
+      "ms": 1991,
+      "consoleDelta": []
+    },
+    {
+      "id": "E2",
+      "section": "env",
+      "title": "定位扩展 ID 并打开平台首页",
+      "ok": true,
+      "detail": "extId=iegegmaeojncdljmeacnkcpmjilladhd · title=价格监控平台 · cards=4 · switches=patrol,share,radar,guide",
+      "error": "",
+      "ms": 11966,
+      "consoleDelta": []
+    },
+    {
+      "id": "E3",
+      "section": "env",
+      "title": "下载目录与截图目录就绪",
+      "ok": true,
+      "detail": "downloadDir=~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads（已有 0 个文件）",
+      "error": "",
+      "ms": 5,
+      "consoleDelta": []
+    },
+    {
+      "id": "S01",
+      "section": "share",
+      "title": "从平台首页进入「市占率」业务（iframe#moduleFrame 加载 modules/share/app.html）",
+      "ok": true,
+      "detail": "via=card · iframe=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html · 页签=工作台/总览/匹配库/统计看板/设置与帮助",
+      "error": "",
+      "ms": 3201,
+      "consoleDelta": []
+    },
+    {
+      "id": "S02",
+      "section": "share",
+      "title": "工作台空态结构：配对表空提示 / 导入区 / KPI 全 0 / 分析按钮",
+      "ok": true,
+      "detail": "空态正常 · 榜单=0 · KPI=榜单文件 0 个 总行数 0 行 已补齐 0 / 0 行 待补采 0 / 有效 0 行 已下架 0 行（不计入分母） 采集失败 0 行 待确认 0 行 待确认写入 0 行 待人工复核 0 行 缺尺寸段 0 行 缺价格段 0 行 尺寸段覆盖 0% 0/0 价格段覆盖 0% 0/0 总成交金额 0 万元",
+      "error": "",
+      "ms": 3,
+      "consoleDelta": []
+    },
+    {
+      "id": "S03",
+      "section": "share",
+      "title": "空态点「分析补数」给出明确错误提示且不崩溃",
+      "ok": true,
+      "detail": "toast=还没有榜单：先导入 .xlsx 榜单文件",
+      "error": "",
+      "ms": 1118,
+      "consoleDelta": []
+    },
+    {
+      "id": "S04",
+      "section": "share",
+      "title": "四页签来回切换（工作台→总览→匹配库→统计看板→设置与帮助→工作台）",
+      "ok": true,
+      "detail": "切换顺序 workbench→overview→library→stats→settings→workbench，每次仅 1 页可见",
+      "error": "",
+      "ms": 6800,
+      "consoleDelta": []
+    },
+    {
+      "id": "S05",
+      "section": "share",
+      "title": "导入真实电商平台榜单 xlsx（test-backfill.xlsx，200 行）→ 榜单卡/类目绑定/配对表出现",
+      "ok": true,
+      "detail": "test-backfill.xlsx · 200行 · sheet=品牌B大家电商智_商品榜单_热销排名_离线_汇总下载 · 绑定「大家电 会议电视」· 置信度=1 · DOM行=100",
+      "error": "",
+      "ms": 3553,
+      "consoleDelta": []
+    },
+    {
+      "id": "S06",
+      "section": "share",
+      "title": "导入第二个真实榜单（回填_11月-会议平板 xlsx，真实导出回填格式）→ 2 个榜单 / 总 400 行 / 榜单卡切换",
+      "ok": true,
+      "detail": "test-backfill.xlsx:200行/大家电 会议电视 / 回填_11月-会议平板_20261106-125446.xlsx:200行/大家电 会议平板一体机 · 卡片切换 → 当前榜单行数=200",
+      "error": "",
+      "ms": 5064,
+      "consoleDelta": []
+    },
+    {
+      "id": "S07",
+      "section": "share",
+      "title": "点「分析补数」（离线）→ 分析完成提示 + 数字/配对表更新",
+      "ok": true,
+      "detail": "toast=分析完成：2 个榜单 / 400 行 · table=200 · DOM行=100",
+      "error": "",
+      "ms": 3832,
+      "consoleDelta": []
+    },
+    {
+      "id": "S08",
+      "section": "share",
+      "title": "配对表行内编辑「型号」→ 单元格/状态/来源 更新",
+      "ok": true,
+      "detail": "SKU=100200174986 型号 100XP3E → QA-MODEL-75X（来源=手动）",
+      "error": "",
+      "ms": 3665,
+      "consoleDelta": []
+    },
+    {
+      "id": "S09",
+      "section": "share",
+      "title": "配对表行内编辑「尺寸段」→ 单元格/人工来源更新（或 KPI 缺尺寸段减少）",
+      "ok": true,
+      "detail": "SKU=100200174986 尺寸段 98/100英寸 → 86/85英寸 · 缺尺寸段 2→2（该行原有尺寸，KPI 不变）",
+      "error": "",
+      "ms": 3765,
+      "consoleDelta": []
+    },
+    {
+      "id": "S10",
+      "section": "share",
+      "title": "行内编辑「取消」不写库（编辑器出现 → 取消 → 原值恢复）",
+      "ok": true,
+      "detail": "套餐保持 \"\"（未写库）",
+      "error": "",
+      "ms": 1466,
+      "consoleDelta": []
+    },
+    {
+      "id": "S11",
+      "section": "share",
+      "title": "搜索 / 状态筛选 / 每页行数 / 快捷筛选 交互断言",
+      "ok": true,
+      "detail": "搜索 100→71 行；缺价格段筛选 100 行；50/页 50 行；chip 筛选 2 行后取消",
+      "error": "",
+      "ms": 8393,
+      "consoleDelta": []
+    },
+    {
+      "id": "S12",
+      "section": "share",
+      "title": "总览页：全部配对行汇总 + 搜索/筛选 + 导出配对表 xlsx / CSV（真实下载）",
+      "ok": true,
+      "detail": "overviewCount=400 → 搜索「海信」101 行 → 类目「大家电 会议电视（200 行）」200 行 · DOM行=200 · 下载 配对总览_20261117-155156.xlsx (43008B, PK 头) · 配对总览_20261117.csv（126487B / 401 行）",
+      "error": "",
+      "ms": 12364,
+      "consoleDelta": []
+    },
+    {
+      "id": "S13",
+      "section": "share",
+      "title": "统计看板：类目选择条切换 → 数字/榜单口径变化",
+      "ok": true,
+      "detail": "tabs=全部400 行 · 4,246 万 / 大家电 会议电视200 行 · 2,361 万 / 大家电 会议平板一体机200 行 · 1,885 万 · 品类品牌数 34→16 · 切到「大家电 会议电视200 行 · 2,361 万」· 品牌排序 {\"field\":\"amount\",\"dir\":\"desc\"}→{\"field\":\"brand\",\"dir\":\"asc\"}（首行 海信→奥德文仪）",
+      "error": "",
+      "ms": 5882,
+      "consoleDelta": []
+    },
+    {
+      "id": "S14",
+      "section": "share",
+      "title": "统计看板：品牌搜索过滤 + 刷新统计 + 导出统计 xlsx 下载",
+      "ok": true,
+      "detail": "品牌表 16 行 → 搜索「海信」1 行 → 刷新 16 行 · 下载 市占率结果_20261117-155209.xlsx (48447B, PK 头)",
+      "error": "",
+      "ms": 5094,
+      "consoleDelta": []
+    },
+    {
+      "id": "S15",
+      "section": "share",
+      "title": "导出菜单：市占率结果 xlsx / 当前榜单回填 xlsx / 全部回填 xlsx / 筛选 CSV / 备份 JSON（真实下载）",
+      "ok": true,
+      "detail": "结果=市占率结果_20261117-155212.xlsx (48447B, PK 头)；当前回填=回填_test-backfill_20261117-155213.xlsx(23673B)；全部回填=2 个(回填_test-backfill_20261117-155214.xlsx,回填_回填_11月-会议平板_20261106-125446_20261117-155215.xlsx)；CSV=配对明细_20261117.csv(61689B)；备份=市占率备份_20261117-155218.json(2014809B) · saveState=\"生成回填 xlsx 2/2…\"",
+      "error": "",
+      "ms": 10913,
+      "consoleDelta": []
+    },
+    {
+      "id": "S16",
+      "section": "share",
+      "title": "匹配库页：KPI / 类目列表 / SKU 明细 / 搜索 / 操作日志开合",
+      "ok": true,
+      "detail": "KPI=类目 | 4 | 个 | SKU 总数 | 1,101 | 个 | 尺寸段覆盖 | 58% | 639/1,101 | 价格段覆盖 | 58.9% | 648/1,101 | 尺寸+价格齐全 | 58% | 638 条 | 历史脏值记录 | · 明细 100 行（搜索 海信 → 100）· 操作日志 2 条已开合",
+      "error": "",
+      "ms": 7363,
+      "consoleDelta": []
+    },
+    {
+      "id": "S17",
+      "section": "share",
+      "title": "匹配库：导出 xlsx 下载 + 归一化脏值 / 冲突检查 给出结果面板",
+      "ok": true,
+      "detail": "下载 匹配库_20261117-155229.xlsx (73424B, PK 头) · 归一化报告「归一化完成：共修正 1 处脏值（最多展示 200 条）。 # 类目 SKU 字段 修正前 修正后 1 大家电 会议电视 100200174986 尺寸段 86/85英寸 98/100英寸」· 冲突检查「匹配库检查： 类目 4 SKU 1,101 尺寸/价格不完整 463 历史脏值 27 跨类目冲突 0 空商品名 200 尺寸段 / 价格段不完整（463 条，最多展示 200 条；这些行会在下个月导入」",
+      "error": "",
+      "ms": 6250,
+      "consoleDelta": []
+    },
+    {
+      "id": "S18",
+      "section": "share",
+      "title": "设置页：关键项存在 + 修改「每次最多采集」保存并持久化",
+      "ok": true,
+      "detail": "快捷键检查通过 · batch 0→5（存储=5）",
+      "error": "",
+      "ms": 4715,
+      "consoleDelta": []
+    },
+    {
+      "id": "S19",
+      "section": "share",
+      "title": "设置页：恢复默认设置（确认框）→ 批量恢复默认值",
+      "ok": true,
+      "detail": "确认框「恢复默认设置」→ 已恢复默认设置 · batchSize=0",
+      "error": "",
+      "ms": 2408,
+      "consoleDelta": []
+    },
+    {
+      "id": "S20",
+      "section": "share",
+      "title": "主题切换 ☀/🌙（data-theme + toast + 切回）",
+      "ok": true,
+      "detail": "dark(☀) → light(🌙) → dark",
+      "error": "",
+      "ms": 3556,
+      "consoleDelta": []
+    },
+    {
+      "id": "S21",
+      "section": "share",
+      "title": "设置页：导出备份 JSON → 再导入同一备份（闭环，确认框）",
+      "ok": true,
+      "detail": "下载 市占率备份_20261117-155245.json（2015178B，4 类目 / 2 榜单）→ 导入成功 · toast=备份已导入：匹配库 4 个类目 / 榜单 2 个",
+      "error": "",
+      "ms": 6004,
+      "consoleDelta": []
+    },
+    {
+      "id": "S22",
+      "section": "share",
+      "title": "不同结构真实 xlsx（线上竞争数据分析（月度）.xlsx）导入稳健性",
+      "ok": true,
+      "detail": "成功导入 线上竞争数据分析（月度）.xlsx：176 行（绑定类目=3C店）",
+      "error": "",
+      "ms": 2526,
+      "consoleDelta": []
+    },
+    {
+      "id": "S23",
+      "section": "share",
+      "title": "市占率 section 阶段 console error / runtimeErrors 汇总",
+      "ok": true,
+      "detail": "console error 0（页面累计 0）· runtimeErrors 0",
+      "error": "",
+      "ms": 2,
+      "consoleDelta": []
+    },
+    {
+      "id": "R01",
+      "section": "radar",
+      "title": "从平台顶部切换到「竞品监控」（iframe 加载 modules/radar/app.html）",
+      "ok": true,
+      "detail": "via=switch · chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.html · 176 个 SKU · 视图=dashboard/analytics/volatility/watchlist/alerts/runs",
+      "error": "",
+      "ms": 1716,
+      "consoleDelta": []
+    },
+    {
+      "id": "R02",
+      "section": "radar",
+      "title": "六个视图逐个切换（总览/分析/波动/监控清单/异动中心/采集任务）",
+      "ok": true,
+      "detail": "dashboard「总览」 → analytics「分析」 → volatility「波动」 → watchlist「监控清单」 → alerts「异动中心」 → runs「采集任务」",
+      "error": "",
+      "ms": 8487,
+      "consoleDelta": []
+    },
+    {
+      "id": "R03",
+      "section": "radar",
+      "title": "总览数据渲染：KPI / 品牌分布 / 最新异动 / 价格带 / 同尺寸最低价 / 采集概况",
+      "ok": true,
+      "detail": "KPI={\"monitor\":\"173\",\"today\":\"0\",\"alerts\":\"0\",\"drop\":\"0\",\"rise\":\"0\",\"fail\":\"0\"} · hero=173 · 品牌条=7 · 价格带=6 · 同尺寸=5 · 异动行=0",
+      "error": "",
+      "ms": 1404,
+      "consoleDelta": []
+    },
+    {
+      "id": "R04",
+      "section": "radar",
+      "title": "监控清单：表格排序（点表头）→ 排序字段/方向/首行变化",
+      "ok": true,
+      "detail": "表头 brand,category,size,sku,base,latest,delta,band,peer,updated,status · 排序=base desc→asc · 首行 SKU 100226456369→100406803958",
+      "error": "",
+      "ms": 3700,
+      "consoleDelta": []
+    },
+    {
+      "id": "R05",
+      "section": "radar",
+      "title": "监控清单：搜索 / 类型筛选 / 状态筛选 / 清空筛选",
+      "ok": true,
+      "detail": "搜索 176→47 行 · 类型「LED屏」→2 行 · 已下架 3 行 · 已清空",
+      "error": "",
+      "ms": 6755,
+      "consoleDelta": []
+    },
+    {
+      "id": "R06",
+      "section": "radar",
+      "title": "清单：品牌 chip / 密度切换 / 隐藏已下架 勾选生效",
+      "ok": true,
+      "detail": "品牌 chip「联想 47」→ 47 行 · 密度 comfortable→compact · 隐藏已下架 176→173 行",
+      "error": "",
+      "ms": 7346,
+      "consoleDelta": []
+    },
+    {
+      "id": "R07",
+      "section": "radar",
+      "title": "导出 JSON 备份（真实下载 + schema/数据校验）",
+      "ok": true,
+      "detail": "下载 竞品价格雷达-备份-20261117-1553.json（787B）· schema=price-radar.backup.v1 · custom=0 · captures=0 · 设置项=20",
+      "error": "",
+      "ms": 2049,
+      "consoleDelta": []
+    },
+    {
+      "id": "R08",
+      "section": "radar",
+      "title": "导出 CSV 清单（真实下载 + 表头/行数校验）",
+      "ok": true,
+      "detail": "下载 竞品价格雷达-清单-20261117.csv（19884B）· 176 行数据",
+      "error": "",
+      "ms": 1537,
+      "consoleDelta": []
+    },
+    {
+      "id": "R08b",
+      "section": "radar",
+      "title": "「导出最新数据」：当前筛选 CSV（表头/行数/筛选生效/商品链接）",
+      "ok": true,
+      "detail": "品牌筛选=联想 · 清单 47 行 → CSV 47 行 · toast=已导出最新数据 47 行（当前筛选（品牌=联想），按基表顺序）",
+      "error": "",
+      "ms": 3322,
+      "consoleDelta": []
+    },
+    {
+      "id": "R09",
+      "section": "radar",
+      "title": "勾选 2 个 SKU → 「对比」按钮启用 → 对比弹窗 2 行 → 关闭",
+      "ok": true,
+      "detail": "selText=已选 2 个 · 对比 2 行 · 图例「联想 55英寸 联想 65英寸」· 已关闭",
+      "error": "",
+      "ms": 5913,
+      "consoleDelta": []
+    },
+    {
+      "id": "R10",
+      "section": "radar",
+      "title": "详情抽屉打开：SKU/型号/基准价/标签/采集记录 渲染",
+      "ok": true,
+      "detail": "SKU=SKU 100226456369 · 型号=联想 55英寸 · 基准=¥2,199 · 标签=联想 会议电视 55英寸 安卓 < 3,000 已下架 · 下架按钮=恢复上架",
+      "error": "",
+      "ms": 2022,
+      "consoleDelta": []
+    },
+    {
+      "id": "R11",
+      "section": "radar",
+      "title": "抽屉：修改基准价保存（saveMeta 写后校验修复回归）",
+      "ok": true,
+      "detail": "基准价保存成功：¥4,321 · toast=基准价已保存（saveMeta 校验修复已验证）",
+      "error": "",
+      "ms": 2651,
+      "consoleDelta": []
+    },
+    {
+      "id": "R12",
+      "section": "radar",
+      "title": "抽屉：修改备注保存（saveMeta 修复回归）",
+      "ok": true,
+      "detail": "备注保存成功：备注已保存",
+      "error": "",
+      "ms": 2558,
+      "consoleDelta": []
+    },
+    {
+      "id": "R13",
+      "section": "radar",
+      "title": "抽屉：复制 SKU（navigator.clipboard 调用 / 成功提示）",
+      "ok": true,
+      "detail": "toast=已复制 SKU：100226456369 · secureContext=true",
+      "error": "",
+      "ms": 1020,
+      "consoleDelta": []
+    },
+    {
+      "id": "R14",
+      "section": "radar",
+      "title": "抽屉：标记已下架 → 恢复上架（状态/按钮/标签变化）",
+      "ok": true,
+      "detail": "offline true→false→true（storage 持久化=true）· 按钮「恢复上架」↔「标记已下架」· toast=已恢复上架，重新加入自动采集 · 抽屉已关闭",
+      "error": "",
+      "ms": 3743,
+      "consoleDelta": []
+    },
+    {
+      "id": "R15",
+      "section": "radar",
+      "title": "采集前状态：写入记录表禁用 / 暂停停止禁用 / 开始与重新核验可用",
+      "ok": true,
+      "detail": "开始/重新核验可用 · 确认本次采集禁用(title=当前没有待写入记录表的采集结果) · 范围=filtered · 本批最多=40",
+      "error": "",
+      "ms": 1235,
+      "consoleDelta": []
+    },
+    {
+      "id": "R16",
+      "section": "radar",
+      "title": "重新核验 → 起「开始采集」确认框 → 取消（不启动任务）",
+      "ok": true,
+      "detail": "确认框「开始采集」文案含本次 SKU/采集模式 → 取消后 running=false",
+      "error": "",
+      "ms": 2125,
+      "consoleDelta": []
+    },
+    {
+      "id": "R17",
+      "section": "radar",
+      "title": "单条采集闭环（Fetch 拦截 item.shop.example.com 本地 mock）：toast/任务记录/最新价/KPI",
+      "ok": true,
+      "detail": "SKU=100302202082 · 价格=¥4999(hand / 置信度=high) · 任务记录 0→1 · toast=采集结束：成功 1 · 失败 0；点「写入今日记录」批量更新下轮基准 · Fetch 拦截=1 次",
+      "error": "",
+      "ms": 8118,
+      "consoleDelta": []
+    },
+    {
+      "id": "R18",
+      "section": "radar",
+      "title": "「写入今日记录」→ 本批最新价批量写入记录表当天日期列（日期 × SKU）",
+      "ok": true,
+      "detail": "toast=已把 1 个 SKU 的本次采集价写入今日记录（2026-11-17）；下一轮波动以记录表为准 · 记录表 1 天 · 今日记录价=4999 · 最近任务「2026-11-17 15:53 后台标签页 1 1 0 — 6s」",
+      "error": "",
+      "ms": 3511,
+      "consoleDelta": []
+    },
+    {
+      "id": "R18b",
+      "section": "radar",
+      "title": "记录表弹窗：日期 × SKU 矩阵 / 导出 CSV / 关闭",
+      "ok": true,
+      "detail": "弹窗 1 行 × 1 天 · CSV 1 行（竞品价格雷达-记录表-20261117-1554.csv）· 表头含日期列 2026-11-17",
+      "error": "",
+      "ms": 5390,
+      "consoleDelta": []
+    },
+    {
+      "id": "R18c",
+      "section": "radar",
+      "title": "下一轮「较基准」以记录表最近日期列为准（记录 4999 → 新采 5499 = +10%）",
+      "ok": true,
+      "detail": "记录表基准 ¥4999 → 新采 ¥5499 · 较基准单元格=↑10.0% · 基准单元格=¥4,999 记录表",
+      "error": "",
+      "ms": 6764,
+      "consoleDelta": []
+    },
+    {
+      "id": "R19",
+      "section": "radar",
+      "title": "详情抽屉「立即采集」下架页路径（mock 已下架页）→ 下架算成功采集/自动下架/不崩溃",
+      "ok": true,
+      "detail": "SKU=100302202034 · toast=采集结束：成功 1 · 失败 0；点「写入今日记录」批量更新下轮基准 · fail.type=offline · 自动下架=true · 原因=商品已下架 / 页面不存在（页面标题：电商平台商品页（本地 mock · 已下架））",
+      "error": "",
+      "ms": 4303,
+      "consoleDelta": []
+    },
+    {
+      "id": "R20",
+      "section": "radar",
+      "title": "设置弹窗：改阈值 → 保存 → 重开断言保留（并改回）",
+      "ok": true,
+      "detail": "阈值 5/15 → 6/18（存储+重开保留）→ 已改回 5/15 · 模式=background",
+      "error": "",
+      "ms": 8000,
+      "consoleDelta": []
+    },
+    {
+      "id": "R21",
+      "section": "radar",
+      "title": "帮助弹窗：打开/内容/关闭",
+      "ok": true,
+      "detail": "帮助内容「使用说明 一分钟上手 Edge 打开 edge://extensions/ → 打开「开发人员模式」→「加载解压缩的扩展」→ 选择 竞品价格雷达\\extension → 固定到工具栏。 点扩展图标打开工作台。内置监控清单来自《线上竞争数据分」已开合",
+      "error": "",
+      "ms": 2025,
+      "consoleDelta": []
+    },
+    {
+      "id": "R22",
+      "section": "radar",
+      "title": "「添加监控」弹窗：打开 / 无效 SKU 校验提示 / 取消关闭",
+      "ok": true,
+      "detail": "弹窗打开 · 无效输入提示「请输入正确的电商平台 SKU 或商品链接（6–20 位数字）」· 取消关闭",
+      "error": "",
+      "ms": 4357,
+      "consoleDelta": []
+    },
+    {
+      "id": "R23",
+      "section": "radar",
+      "title": "异动中心：状态页签切换 + 异动条目处理（确认采集后应有异动）",
+      "ok": true,
+      "detail": "页签=未处理 3 / 已处理 0 / 已忽略 0 / 全部 3 · 未处理 3→2 · 列表 3→2 · toast=已标记处理",
+      "error": "",
+      "ms": 6914,
+      "consoleDelta": []
+    },
+    {
+      "id": "R24",
+      "section": "radar",
+      "title": "导出备份 JSON → 再「导入备份」同一文件（闭环；saveMeta 修复后应成功）",
+      "ok": true,
+      "detail": "备份已导入 · toast=备份已导入 · runs(3→0) captures(2→0) · 今日已采 1→0（renderAll 已执行）",
+      "error": "",
+      "ms": 3565,
+      "consoleDelta": []
+    },
+    {
+      "id": "R25",
+      "section": "radar",
+      "title": "竞品监控 section 阶段 console error 汇总",
+      "ok": true,
+      "detail": "console error 0（页面累计 0）",
+      "error": "",
+      "ms": 1,
+      "consoleDelta": []
+    }
+  ],
+  "bugs": [
+    {
+      "id": "BUG-RADAR-SAVEMETA",
+      "severity": "high",
+      "status": "fixed",
+      "section": "radar",
+      "title": "saveMeta 写入校验用 JSON.stringify 直接比较对象，key 顺序被 chrome.storage 重排导致永久误报「写入校验不一致」",
+      "file": "modules/radar/app.js",
+      "lines": "309-330（saveMeta）；调用点：drawerBaselineSave、drawerNoteSave、setRowOffline、handleImportFile、addMonitor 等",
+      "foundInRun": "修复前（Lead 修复前同一脚本）：R11/R12/R24 失败 + R25 console error 3 条",
+      "steps": [
+        "（修复前）打开平台 → 竞品监控 → 监控清单 → 点任意 SKU 行打开详情抽屉",
+        "在「基准价」输入框填 4321，点「保存」",
+        "修复前实际：红色 toast「监控清单保存失败：写入校验不一致」，抽屉基准价仍显示旧值（后续 buildRows/renderAll/成功 toast 均未执行）",
+        "修复前 Console：[exception] Error: 写入校验不一致 at saveMeta (modules/radar/app.js:315:15)"
+      ],
+      "expected": "保存成功，toast「基准价已保存」，抽屉基准价显示 ¥4,321，刷新后仍保留",
+      "actualBefore": "toast=监控清单保存失败：写入校验不一致；抽屉基准价=¥2,199；但数据层实际已写入 baseline=4321（仅写后校验误判）；R12 备注保存、R24 导入备份同样受影响",
+      "actualAfter": "修复后：toast=基准价已保存，抽屉基准价=¥4,321；R12 备注保存、R14 下架持久化、R24 导入备份均通过；R25 console error 0",
+      "rootCause": "chrome.storage.local 落盘后读回的对象 key 被按字母序重排（stored=[custom,overrides,savedAt,version] vs 内存=[version,custom,overrides,savedAt]），saveMeta 用 JSON.stringify(check[KEY_META]) !== JSON.stringify(state.meta) 做一致性校验，key 顺序不同 → 永远判定不一致并 throw。",
+      "fix": "新增 stableStringify(v)（对象 key 排序后递归序列化），saveMeta 与 storage.onChanged 同步比较都改用它（Lead 已按此修复，与巡检 v1.3.4 saveBaseOverride 对齐）。",
+      "evidence": [
+        "shots-deep-business/R11-radar-drawer-baseline-ok.png",
+        "shots-deep-business/R24-radar-import-confirm.png",
+        "shots-deep-business/R23-radar-alerts.png"
+      ]
+    }
+  ],
+  "bugsSummary": {
+    "total": 1,
+    "open": 0,
+    "fixed": 1
+  },
+  "testExpectationNotes": [
+    {
+      "id": "S02",
+      "title": "空态配对表提示文案",
+      "productBehavior": "#matchEmpty 运行时文案为「尚未导入榜单。导入后点「分析补数」，这里会显示每一行的尺寸段 / 价格段与来源。」（与 app.html 静态初始文案不同，由 renderMatchTable 在空态时替换）",
+      "correction": "断言从固定文案「导入榜单并点击」改为兼容实际空态文案；属于测试期望修正，不是产品 bug。"
+    },
+    {
+      "id": "S05",
+      "title": "导入后榜单卡文件名",
+      "productBehavior": "导入完成后「STEP 01 导入区」按设计自动折叠、榜单管理 details 默认关闭，隐藏 details 内元素的 innerText 为空，但卡片 DOM 与文件名均正确存在（report cards 由 renderReports 渲染）",
+      "correction": "测试改为先展开「榜单管理」details（真实用户可见路径）再断言卡片 textContent；产品行为符合 DESIGN 18.3，不是产品 bug。"
+    },
+    {
+      "id": "S06",
+      "title": "两个榜单后的「配对表」行数",
+      "productBehavior": "配对表 #tableCount 统计「当前榜单」行数（200），不是多榜单合计；总览页 #overviewCount 才是全部榜单合计 400。产品语义正确。",
+      "correction": "断言改为：2 个榜单各 200 行、合计 400 行、配对表=当前榜单 200 行，并补充「点击榜单卡切换当前榜单」交互断言；属于测试期望修正，不是产品 bug。"
+    }
+  ],
+  "downloads": [
+    {
+      "name": "配对总览_20261117-155156.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\配对总览_20261117-155156.xlsx",
+      "size": 43008,
+      "at": "2026-11-17T07:51:58.069Z"
+    },
+    {
+      "name": "配对总览_20261117.csv",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\配对总览_20261117.csv",
+      "size": 126487,
+      "at": "2026-11-17T07:51:59.788Z"
+    },
+    {
+      "name": "市占率结果_20261117-155209.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\市占率结果_20261117-155209.xlsx",
+      "size": 48447,
+      "at": "2026-11-17T07:52:10.769Z"
+    },
+    {
+      "name": "市占率结果_20261117-155212.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\市占率结果_20261117-155212.xlsx",
+      "size": 48447,
+      "at": "2026-11-17T07:52:13.360Z"
+    },
+    {
+      "name": "回填_test-backfill_20261117-155213.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\回填_test-backfill_20261117-155213.xlsx",
+      "size": 23673,
+      "at": "2026-11-17T07:52:14.664Z"
+    },
+    {
+      "name": "回填_test-backfill_20261117-155214.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\回填_test-backfill_20261117-155214.xlsx",
+      "size": 23673,
+      "at": "2026-11-17T07:52:16.856Z"
+    },
+    {
+      "name": "回填_回填_11月-会议平板_20261106-125446_20261117-155215.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\回填_回填_11月-会议平板_20261106-125446_20261117-155215.xlsx",
+      "size": 23318,
+      "at": "2026-11-17T07:52:16.856Z"
+    },
+    {
+      "name": "配对明细_20261117.csv",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\配对明细_20261117.csv",
+      "size": 61689,
+      "at": "2026-11-17T07:52:18.154Z"
+    },
+    {
+      "name": "市占率备份_20261117-155218.json",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\市占率备份_20261117-155218.json",
+      "size": 2014809,
+      "at": "2026-11-17T07:52:19.497Z"
+    },
+    {
+      "name": "匹配库_20261117-155229.xlsx",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\匹配库_20261117-155229.xlsx",
+      "size": 73424,
+      "at": "2026-11-17T07:52:30.343Z"
+    },
+    {
+      "name": "市占率备份_20261117-155245.json",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\市占率备份_20261117-155245.json",
+      "size": 2015178,
+      "at": "2026-11-17T07:52:47.323Z"
+    },
+    {
+      "name": "竞品价格雷达-备份-20261117-1553.json",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\竞品价格雷达-备份-20261117-1553.json",
+      "size": 787,
+      "at": "2026-11-17T07:53:25.966Z"
+    },
+    {
+      "name": "竞品价格雷达-清单-20261117.csv",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\竞品价格雷达-清单-20261117.csv",
+      "size": 19884,
+      "at": "2026-11-17T07:53:27.502Z"
+    },
+    {
+      "name": "竞品价格雷达-最新数据-20261117-1553.csv",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\竞品价格雷达-最新数据-20261117-1553.csv",
+      "size": 7547,
+      "at": "2026-11-17T07:53:29.811Z"
+    },
+    {
+      "name": "竞品价格雷达-记录表-20261117-1554.csv",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\downloads\\竞品价格雷达-记录表-20261117-1554.csv",
+      "size": 117,
+      "at": "2026-11-17T07:54:08.252Z"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "S01-share-workbench-empty.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S01-share-workbench-empty.png",
+      "note": "市占率 · 工作台首屏（未导入）"
+    },
+    {
+      "name": "S03-share-tabs-cycled.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S03-share-tabs-cycled.png",
+      "note": "四页签切换后回到工作台"
+    },
+    {
+      "name": "S05-share-imported.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S05-share-imported.png",
+      "note": "导入 test-backfill.xlsx 后"
+    },
+    {
+      "name": "S06-share-imported-2.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S06-share-imported-2.png",
+      "note": "导入两个真实榜单后（含榜单卡）"
+    },
+    {
+      "name": "S07-share-analyzed.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S07-share-analyzed.png",
+      "note": "分析补数完成后（含 KPI）"
+    },
+    {
+      "name": "S08-share-inline-edited-model.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S08-share-inline-edited-model.png",
+      "note": "行内编辑型号为 QA-MODEL-75X"
+    },
+    {
+      "name": "S09-share-inline-edited-size.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S09-share-inline-edited-size.png",
+      "note": "行内编辑尺寸段"
+    },
+    {
+      "name": "S12-share-overview.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S12-share-overview.png",
+      "note": "市占率 · 总览页"
+    },
+    {
+      "name": "S13-share-stats.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S13-share-stats.png",
+      "note": "统计看板 · 类目「大家电 会议电视200 行 · 2,361 万」+ 品牌排序"
+    },
+    {
+      "name": "S15-share-export-menu.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S15-share-export-menu.png",
+      "note": "导出菜单 + 下载完成"
+    },
+    {
+      "name": "S16-share-library.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S16-share-library.png",
+      "note": "市占率 · 匹配库页"
+    },
+    {
+      "name": "S17-share-library-report.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S17-share-library-report.png",
+      "note": "匹配库 · 归一化/冲突检查结果"
+    },
+    {
+      "name": "S18-share-settings.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S18-share-settings.png",
+      "note": "设置页 · 保存后"
+    },
+    {
+      "name": "S20-share-theme.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S20-share-theme.png",
+      "note": "主题切换后（已切回）"
+    },
+    {
+      "name": "S21-share-backup-roundtrip.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\S21-share-backup-roundtrip.png",
+      "note": "备份 JSON 导出→导入 闭环"
+    },
+    {
+      "name": "R01-radar-dashboard.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R01-radar-dashboard.png",
+      "note": "竞品监控 · 总览"
+    },
+    {
+      "name": "R02-radar-analytics.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R02-radar-analytics.png",
+      "note": "竞品监控 · 分析"
+    },
+    {
+      "name": "R02-radar-volatility.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R02-radar-volatility.png",
+      "note": "竞品监控 · 波动"
+    },
+    {
+      "name": "R02-radar-alerts.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R02-radar-alerts.png",
+      "note": "竞品监控 · 异动中心"
+    },
+    {
+      "name": "R02-radar-runs.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R02-radar-runs.png",
+      "note": "竞品监控 · 采集任务"
+    },
+    {
+      "name": "R09-radar-compare.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R09-radar-compare.png",
+      "note": "竞品对比弹窗（2 个 SKU）"
+    },
+    {
+      "name": "R10-radar-drawer.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R10-radar-drawer.png",
+      "note": "竞品详情抽屉"
+    },
+    {
+      "name": "R11-radar-drawer-baseline-ok.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R11-radar-drawer-baseline-ok.png",
+      "note": "修复后：抽屉基准价保存成功（¥4,321 + 成功 toast）"
+    },
+    {
+      "name": "R12-radar-drawer-note-ok.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R12-radar-drawer-note-ok.png",
+      "note": "修复后：抽屉备注保存成功"
+    },
+    {
+      "name": "R16-radar-start-confirm.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R16-radar-start-confirm.png",
+      "note": "开始采集确认框（重新核验）"
+    },
+    {
+      "name": "R17-radar-capture-success.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R17-radar-capture-success.png",
+      "note": "mock 采集成功 SKU=100302202082"
+    },
+    {
+      "name": "R18-radar-runs.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R18-radar-runs.png",
+      "note": "采集任务视图（含 mock 采集记录）"
+    },
+    {
+      "name": "R19-radar-capture-offline.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R19-radar-capture-offline.png",
+      "note": "mock 下架页采集失败路径"
+    },
+    {
+      "name": "R20-radar-settings.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R20-radar-settings.png",
+      "note": "设置弹窗（阈值保存/重开保留）"
+    },
+    {
+      "name": "R23-radar-alerts.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R23-radar-alerts.png",
+      "note": "异动中心（mock 采集产生的异动 + 标记处理）"
+    },
+    {
+      "name": "R24-radar-import-confirm.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R24-radar-import-confirm.png",
+      "note": "导入备份确认框"
+    },
+    {
+      "name": "R24-radar-import-ok.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\R24-radar-import-ok.png",
+      "note": "修复后：导入备份成功（备份已导入 + 数据覆盖）"
+    },
+    {
+      "name": "ZZ-final-state.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-business\\ZZ-final-state.png",
+      "note": "验收结束页面状态"
+    }
+  ],
+  "sectionSummary": {
+    "share": {
+      "entry": "via=card · iframe=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html · 页签=工作台/总览/匹配库/统计看板/设置与帮助",
+      "import1": "test-backfill.xlsx · 200行 · sheet=品牌B大家电商智_商品榜单_热销排名_离线_汇总下载 · 绑定「大家电 会议电视」· 置信度=1 · DOM行=100",
+      "import2": "test-backfill.xlsx:200行/大家电 会议电视 / 回填_11月-会议平板_20261106-125446.xlsx:200行/大家电 会议平板一体机 · 卡片切换 → 当前榜单行数=200",
+      "analyze": "toast=分析完成：2 个榜单 / 400 行 · table=200 · DOM行=100",
+      "checkCount": {
+        "total": 23,
+        "passed": 23
+      }
+    },
+    "radar": {
+      "entry": "via=switch · chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.html · 176 个 SKU · 视图=dashboard/analytics/volatility/watchlist/alerts/runs",
+      "captureOk": {
+        "sku": "100302202082",
+        "price": 4999,
+        "kind": "hand",
+        "confidence": "high",
+        "runs": 1,
+        "today": "1"
+      },
+      "checkCount": {
+        "total": 28,
+        "passed": 28
+      }
+    }
+  }
+}

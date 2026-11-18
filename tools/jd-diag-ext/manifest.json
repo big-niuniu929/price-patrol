@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "JD取价诊断（临时工具）",
+  "version": "1.1.0",
+  "description": "手动开关的电商平台商品页取价诊断：默认关闭，点工具栏图标开启后才保存 DOM 诊断文件；只读页面、不上传。",
+  "permissions": ["storage"],
+  "host_permissions": ["https://item.shop.example.com/*", "https://item.shop.example.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "JD取价诊断：已关闭（点击开启）"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://item.shop.example.com/*", "https://item.shop.example.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
+}

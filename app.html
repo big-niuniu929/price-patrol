@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>价格监控平台</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- 图标 sprite：全部内联 SVG，不依赖外部资源（MV3 CSP 安全） -->
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-brand" viewBox="0 0 24 24"><path d="M3 19V9.5"/><path d="M8.5 19V5"/><path d="M14 19v-6.5"/><path d="M19.5 19V8"/><path d="M2.5 21h19"/></symbol>
+    <symbol id="i-patrol" viewBox="0 0 24 24"><path d="M8 4.5h8a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 16 20.5H8A1.5 1.5 0 0 1 6.5 19V6A1.5 1.5 0 0 1 8 4.5Z"/><path d="M9.5 3h5v3h-5z"/><path d="m9.5 12 2 2 3.5-4"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9V3Z"/><path d="M14.5 3.4A9 9 0 0 1 20.6 9.5H14.5V3.4Z"/></symbol>
+    <symbol id="i-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.3"/><path d="M12 12 19 7"/></symbol>
+    <symbol id="i-guide" viewBox="0 0 24 24"><path d="M4 5h6.2A1.8 1.8 0 0 1 12 6.8V21a2.6 2.6 0 0 0-2.4-1.6H4V5Z"/><path d="M20 5h-6.2A1.8 1.8 0 0 0 12 6.8V21a2.6 2.6 0 0 1 2.4-1.6H20V5Z"/><path d="M6.6 8.6h2.8"/><path d="M6.6 12h2.8"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13"/><path d="m13 6.5 5.5 5.5L13 17.5"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3.5 10.5 8.5-7 8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5.5h4V20"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.8 5.8v5.4c0 4.3 2.9 7.6 7.2 9.5 4.3-1.9 7.2-5.2 7.2-9.5V5.8L12 3Z"/><path d="m8.9 11.8 2.1 2.1 4.1-4.4"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.6"/><path d="m10.8 12.6 7.4-7.4"/><path d="m15.6 7.8 2.2 2.2"/><path d="m18 5.4 2.2 2.2"/></symbol>
+  </svg>
+
+  <div class="stage" id="stage">
+
+    <!-- ==================== 平台首页：先选择业务 ==================== -->
+    <section class="landing" id="landing" aria-label="选择业务">
+      <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="grain" aria-hidden="true"></div>
+
+      <header class="landing-head">
+        <div class="brand">
+          <span class="brand-mark"><svg class="icon"><use href="#i-brand"/></svg></span>
+          <span class="brand-copy">
+            <b>价格监控平台</b>
+            <em>PRICE MONITORING PLATFORM</em>
+          </span>
+        </div>
+        <div class="head-meta">
+          <span class="pill"><i class="dot ok"></i>本机数据 · 不上传</span>
+          <span class="pill ghost">v1.0.0</span>
+        </div>
+      </header>
+
+      <main class="landing-main">
+        <div class="hero">
+          <p class="eyebrow">STEP 1 · CHOOSE BUSINESS</p>
+          <h1>选择业务</h1>
+          <p class="hero-sub">三个业务与一份使用说明共用一个入口，界面与原来的插件完全一致；数据各自独立保存在本机浏览器。</p>
+        </div>
+
+        <div class="biz-grid" role="list">
+          <!-- 01 价格巡检 -->
+          <button type="button" class="biz-card" data-biz="patrol" role="listitem">
+            <span class="biz-glow" aria-hidden="true"></span>
+            <span class="biz-head">
+              <span class="biz-icon"><svg class="icon"><use href="#i-patrol"/></svg></span>
+              <span class="biz-index">01</span>
+            </span>
+            <span class="biz-name">价格巡检</span>
+            <span class="biz-en">PRICE PATROL · 双轨版</span>
+            <span class="biz-desc">按 SKU 巡检表批量核对电商平台到手价，普惠号 / PLUS 号各跑一遍，低于阈值自动标红。</span>
+            <span class="biz-points">
+              <span><i></i>双轨采集：后台标签页 / 前台小窗 + AI 复核</span>
+              <span><i></i>同品比价：3C 店铺 / 大家电同款配对</span>
+              <span><i></i>导出 CSV / 待上报 Excel / 回填巡检表</span>
+            </span>
+            <span class="biz-foot">
+              <span class="biz-stat">4 类目 · 151 行基表</span>
+              <span class="biz-go">进入业务<svg class="icon"><use href="#i-arrow"/></svg></span>
+            </span>
+            <span class="biz-last hidden" data-last-badge>上次使用</span>
+          </button>
+
+          <!-- 02 市占率 -->
+          <button type="button" class="biz-card" data-biz="share" role="listitem">
+            <span class="biz-glow" aria-hidden="true"></span>
+            <span class="biz-head">
+              <span class="biz-icon"><svg class="icon"><use href="#i-share"/></svg></span>
+              <span class="biz-index">02</span>
+            </span>
+            <span class="biz-name">市场占有率</span>
+            <span class="biz-en">MARKET SHARE WORKBENCH</span>
+            <span class="biz-desc">导入电商平台榜单 Excel，自动补齐尺寸段 / 价格段 / 型号 / 套餐，统计品牌市占率并回填。</span>
+            <span class="biz-points">
+              <span><i></i>榜单导入 + 表头自适应识别</span>
+              <span><i></i>多采样复核与人工确认</span>
+              <span><i></i>市占统计看板 / 回填 Excel 导出</span>
+            </span>
+            <span class="biz-foot">
+              <span class="biz-stat">4 类目 · 1101 SKU 匹配库</span>
+              <span class="biz-go">进入业务<svg class="icon"><use href="#i-arrow"/></svg></span>
+            </span>
+            <span class="biz-last hidden" data-last-badge>上次使用</span>
+          </button>
+
+          <!-- 03 竞品监控 -->
+          <button type="button" class="biz-card" data-biz="radar" role="listitem">
+            <span class="biz-glow" aria-hidden="true"></span>
+            <span class="biz-head">
+              <span class="biz-icon"><svg class="icon"><use href="#i-radar"/></svg></span>
+              <span class="biz-index">03</span>
+            </span>
+            <span class="biz-name">竞品监控</span>
+            <span class="biz-en">COMPETITOR PRICE RADAR</span>
+            <span class="biz-desc">按竞品清单逐个采价，只读主价格区取到手价，自动识别下架 / 无货并生成异动提醒。</span>
+            <span class="biz-points">
+              <span><i></i>降价 / 涨价 / 历史新低 / 采集异常提醒</span>
+              <span><i></i>价格带、同尺寸对标、2–4 个 SKU 对比</span>
+              <span><i></i>波动看板 + 确认式滚动基准</span>
+            </span>
+            <span class="biz-foot">
+              <span class="biz-stat">176 个竞品 SKU</span>
+              <span class="biz-go">进入业务<svg class="icon"><use href="#i-arrow"/></svg></span>
+            </span>
+            <span class="biz-last hidden" data-last-badge>上次使用</span>
+          </button>
+
+          <!-- 04 使用说明 -->
+          <button type="button" class="biz-card" data-biz="guide" role="listitem">
+            <span class="biz-glow" aria-hidden="true"></span>
+            <span class="biz-head">
+              <span class="biz-icon"><svg class="icon"><use href="#i-guide"/></svg></span>
+              <span class="biz-index">04</span>
+            </span>
+            <span class="biz-name">使用说明</span>
+            <span class="biz-en">USER GUIDE · 操作手册</span>
+            <span class="biz-desc">平台是什么、三个业务怎么用、价格怎么取、数据存在哪，写给第一次上手的同事看。</span>
+            <span class="biz-points">
+              <span><i></i>安装 / 打开 / 先选业务的工作方式</span>
+              <span><i></i>三个业务典型流程 + 取价逻辑</span>
+              <span><i></i>基准价 / 记录表 / 数据迁移 / 常见问题</span>
+            </span>
+            <span class="biz-foot">
+              <span class="biz-stat">7 节 · 可独立打开</span>
+              <span class="biz-go">查看说明<svg class="icon"><use href="#i-arrow"/></svg></span>
+            </span>
+            <span class="biz-last hidden" data-last-badge>上次使用</span>
+          </button>
+        </div>
+
+        <p class="kbd-hint">按 <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 进入对应业务，按 <kbd>4</kbd> 打开使用说明</p>
+      </main>
+
+      <footer class="landing-foot">
+        <span><svg class="icon"><use href="#i-shield"/></svg>只读页面 DOM · 不提交订单 · 低频分批采集</span>
+        <span><svg class="icon"><use href="#i-key"/></svg>三个业务数据彼此独立，只存 <code>chrome.storage.local</code></span>
+      </footer>
+    </section>
+
+    <!-- ==================== 业务工作区：iframe 装载原插件界面 ==================== -->
+    <section class="workspace hidden" id="workspace" aria-label="业务工作台">
+      <header class="modbar" id="platformBar">
+        <button type="button" class="modbar-brand" id="homeBtn" title="返回业务选择（Esc）">
+          <span class="brand-mark sm"><svg class="icon"><use href="#i-brand"/></svg></span>
+          <span class="modbar-title">价格监控平台</span>
+          <span class="modbar-sep" aria-hidden="true"></span>
+          <span class="modbar-crumb" id="crumbBiz">—</span>
+        </button>
+
+        <nav class="biz-switch" id="bizSwitch" aria-label="切换业务">
+          <button type="button" class="switch-btn" data-switch-biz="patrol">
+            <svg class="icon"><use href="#i-patrol"/></svg><span>价格巡检</span>
+          </button>
+          <button type="button" class="switch-btn" data-switch-biz="share">
+            <svg class="icon"><use href="#i-share"/></svg><span>市场占有率</span>
+          </button>
+          <button type="button" class="switch-btn" data-switch-biz="radar">
+            <svg class="icon"><use href="#i-radar"/></svg><span>竞品监控</span>
+          </button>
+          <button type="button" class="switch-btn" data-switch-biz="guide">
+            <svg class="icon"><use href="#i-guide"/></svg><span>使用说明</span>
+          </button>
+        </nav>
+
+        <div class="modbar-actions">
+          <span class="pill tiny" id="frameState"><i class="dot ok"></i>已就绪</span>
+          <button type="button" class="tool-btn" id="openTabBtn" title="在独立标签页打开当前业务（长时间采集时推荐）">
+            <svg class="icon"><use href="#i-external"/></svg><span>独立打开</span>
+          </button>
+          <button type="button" class="tool-btn" id="backBtn" title="返回业务选择（Esc）">
+            <svg class="icon"><use href="#i-home"/></svg><span>业务选择</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="frame-wrap">
+        <iframe id="moduleFrame" class="module-frame" title="业务工作台" allow="clipboard-read; clipboard-write"></iframe>
+        <div class="frame-mask" id="frameMask">
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="frame-mask-text" id="frameMaskText">正在进入业务…</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

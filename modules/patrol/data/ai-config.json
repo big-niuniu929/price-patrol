@@ -1,0 +1,8 @@
+{
+  "_说明": "AI 视觉识别配置示例。apiKey 请在本地填写，不要提交到仓库。",
+  "endpoint": "https://gateway.example.com/v1",
+  "model": "deepseek-flash",
+  "apiKey": "",
+  "enabled": true,
+  "verifyMode": "fallback"
+}

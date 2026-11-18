@@ -1,0 +1,564 @@
+{
+  "at": "2026-11-17T07:59:45.770Z",
+  "total": 12,
+  "passed": 12,
+  "failed": 0,
+  "expect": {
+    "sku": "100370009110",
+    "hand": 5149,
+    "main": 5499
+  },
+  "results": {
+    "patrol": {
+      "msg": {
+        "type": "PATROL_ITEM_PRICE_RESULT",
+        "sku": "100370009110",
+        "url": "https://item.shop.example.com/100370009110.html",
+        "title": "联想（Lenovo）会议平板触摸屏一体机65英寸电子白板 内置摄像头 视频会议培训教学一体机4k 办公触摸显示器T65SE",
+        "at": "2026-11-17T07:59:04.298Z",
+        "account": {
+          "nickname": "测试账号",
+          "plusHint": false,
+          "source": "dom"
+        },
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "ok": true,
+        "reason": "",
+        "flags": {
+          "verify": false,
+          "offSale": false,
+          "plusText": false
+        },
+        "main": {
+          "price": 5499,
+          "kind": "main",
+          "cls": "product-price--gray-line-through",
+          "label": "¥5499",
+          "rect": {
+            "left": 885,
+            "top": 272,
+            "width": 41,
+            "height": 18
+          }
+        },
+        "plus": null,
+        "hand": {
+          "price": 5149,
+          "kind": "hand",
+          "cls": "product-price--main",
+          "label": "¥5149 到手价 ¥5499 累计评价 65 降价通知",
+          "rect": {
+            "left": 885,
+            "top": 223,
+            "width": 97,
+            "height": 44
+          }
+        },
+        "source": "product-price--main",
+        "rect": {
+          "left": 885,
+          "top": 223,
+          "width": 97,
+          "height": 44
+        },
+        "priceChanges": [],
+        "candidates": [
+          {
+            "price": 5149,
+            "kind": "hand",
+            "text": "¥5149 到手价 ¥5499 累计评价 65 降价通知",
+            "cls": "product-price--main",
+            "font": 34,
+            "strike": false
+          },
+          {
+            "price": 5149,
+            "kind": "hand",
+            "text": "5149 ¥ ¥",
+            "cls": "product-price--value",
+            "font": 34,
+            "strike": false
+          },
+          {
+            "price": 5499,
+            "kind": "hand",
+            "text": "¥5499 到手价 ¥5149 ¥5149 到手价 累计评价 65 降价通知",
+            "cls": "product-price--gray",
+            "font": 14,
+            "strike": false
+          },
+          {
+            "price": 5499,
+            "kind": "main",
+            "text": "¥5499",
+            "cls": "product-price--gray-line-through",
+            "font": 14,
+            "strike": true
+          },
+          {
+            "price": 459,
+            "kind": "main",
+            "text": "459.00 5年免费换新 5年免费换新",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false
+          },
+          {
+            "price": 599,
+            "kind": "main",
+            "text": "599.00 2年全保换新 2年全保换新",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false
+          },
+          {
+            "price": 701,
+            "kind": "main",
+            "text": "701.00 3年全保换新 3年全保换新",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false
+          },
+          {
+            "price": 239,
+            "kind": "main",
+            "text": "239.00 3年全保修 3年全保修",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false
+          },
+          {
+            "price": 389,
+            "kind": "main",
+            "text": "389.00 5年全保修 5年全保修",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false
+          }
+        ]
+      },
+      "err": ""
+    },
+    "share": {
+      "msg": {
+        "type": "ITEM_CAPTURE_RESULT",
+        "version": "2.2.0",
+        "sku": "100370009110",
+        "url": "https://item.shop.example.com/100370009110.html",
+        "title": "最小单价计算器",
+        "titleRaw": "最小单价计算器",
+        "titleSource": "dom",
+        "previewable": true,
+        "at": "2026-11-17T07:59:17.142Z",
+        "ok": true,
+        "reason": "",
+        "flags": {
+          "verify": false,
+          "offSale": false,
+          "plusText": false,
+          "loginText": false,
+          "priceFragment": true
+        },
+        "pageKind": "item",
+        "offSale": false,
+        "softAnomaly": false,
+        "anomaly": null,
+        "risk": {
+          "hit": false,
+          "reason": "",
+          "url": "https://item.shop.example.com/100370009110.html",
+          "title": "联想（Lenovo）会议平板触摸屏一体机65英寸电子白板 内置摄像头 视频会议培训教学一体机4k 办公触摸显示器T65SE【行情 报价 价格 评测】-电商平台",
+          "detail": ""
+        },
+        "size": {
+          "inch": 65,
+          "text": "65英寸",
+          "source": "variant",
+          "label": "尺寸",
+          "sizeUncertain": false,
+          "matchedBy": "single",
+          "reason": "",
+          "sources": [
+            {
+              "source": "variant",
+              "inch": 65,
+              "text": "65英寸",
+              "label": "尺寸"
+            }
+          ]
+        },
+        "sizeUncertain": false,
+        "sizeReason": "",
+        "brand": "",
+        "model": "",
+        "modelSource": "",
+        "package": "win10畅销版/i5-8+256G+投屏器",
+        "packageSource": "规格选项",
+        "packageGroup": "套餐",
+        "specGroups": [
+          {
+            "label": "尺寸",
+            "selected": "65英寸会议教学一体机+挂墙支架",
+            "options": [
+              "55英寸会议教学一体机+挂墙支架",
+              "55英寸会议教学一体机+落地支架",
+              "65英寸会议教学一体机+挂墙支架",
+              "65英寸会议教学一体机+落地支架",
+              "75英寸会议教学一体机+挂墙支架",
+              "75英寸会议教学一体机+落地支架",
+              "85英寸会议教学一体机+挂墙支架",
+              "85英寸会议教学一体机+落地支架"
+            ],
+            "source": "class"
+          },
+          {
+            "label": "套餐",
+            "selected": "win10畅销版/i5-8+256G+投屏器",
+            "options": [
+              "win10畅销版/i5-8+256G",
+              "win10畅销版/i5-8+256G+投屏器",
+              "win10高配版/i7-8+256G",
+              "win10高配版/i7-8+256G+投屏器"
+            ],
+            "source": "class"
+          }
+        ],
+        "account": {
+          "nickname": "测试账号",
+          "plusHint": false,
+          "source": "dom"
+        },
+        "main": {
+          "price": 5499,
+          "kind": "main",
+          "cls": "product-price--gray-line-through",
+          "label": "¥5499",
+          "rect": {
+            "left": 885,
+            "top": 272,
+            "width": 41,
+            "height": 18
+          }
+        },
+        "plus": null,
+        "hand": {
+          "price": 5149,
+          "kind": "hand",
+          "cls": "product-price--value",
+          "label": "5149 ¥ ¥",
+          "rect": {
+            "left": 899,
+            "top": 223,
+            "width": 84,
+            "height": 44
+          }
+        },
+        "price": 5149,
+        "priceKind": "hand",
+        "priceKindLabel": "到手价",
+        "priceRect": {
+          "left": 899,
+          "top": 223,
+          "width": 84,
+          "height": 44
+        },
+        "priceChanges": [],
+        "sourceLabel": "product-price--value",
+        "pricePick": {
+          "price": 5149,
+          "kind": "hand",
+          "source": "product-price--value",
+          "label": "5149 ¥ ¥",
+          "rect": {
+            "left": 899,
+            "top": 223,
+            "width": 84,
+            "height": 44
+          }
+        },
+        "candidates": [
+          {
+            "price": 5149,
+            "kind": "hand",
+            "text": "¥5149 到手价 ¥5499 累计评价 65 降价通知",
+            "label": "¥5149 到手价 ¥5499 累计评价 65 降价通知",
+            "cls": "product-price--main",
+            "font": 34,
+            "strike": false,
+            "rect": {
+              "left": 885,
+              "top": 223,
+              "width": 97,
+              "height": 44
+            },
+            "score": -660,
+            "suspect": true,
+            "digits": 4
+          },
+          {
+            "price": 5149,
+            "kind": "hand",
+            "text": "5149 ¥ ¥",
+            "label": "5149 ¥ ¥",
+            "cls": "product-price--value",
+            "font": 34,
+            "strike": false,
+            "rect": {
+              "left": 899,
+              "top": 223,
+              "width": 84,
+              "height": 44
+            },
+            "score": 340,
+            "suspect": false,
+            "digits": 4
+          },
+          {
+            "price": 5499,
+            "kind": "hand",
+            "text": "¥5499 到手价 ¥5149 ¥5149 到手价 累计评价 65 降价通知",
+            "label": "¥5499 到手价 ¥5149 ¥5149 到手价 累计评价 65 降价通知",
+            "cls": "product-price--gray",
+            "font": 14,
+            "strike": false,
+            "rect": {
+              "left": 885,
+              "top": 271,
+              "width": 520,
+              "height": 21
+            },
+            "score": -860,
+            "suspect": true,
+            "digits": 4
+          },
+          {
+            "price": 5499,
+            "kind": "main",
+            "text": "¥5499",
+            "label": "¥5499",
+            "cls": "product-price--gray-line-through",
+            "font": 14,
+            "strike": true,
+            "rect": {
+              "left": 885,
+              "top": 272,
+              "width": 41,
+              "height": 18
+            },
+            "score": -1060,
+            "suspect": true,
+            "digits": 4
+          },
+          {
+            "price": 459,
+            "kind": "main",
+            "text": "459.00 5年免费换新 5年免费换新",
+            "label": "459.00 5年免费换新 5年免费换新",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false,
+            "rect": {
+              "left": 92,
+              "top": 18559,
+              "width": 44,
+              "height": 18
+            },
+            "score": 140,
+            "suspect": false,
+            "digits": 3
+          },
+          {
+            "price": 599,
+            "kind": "main",
+            "text": "599.00 2年全保换新 2年全保换新",
+            "label": "599.00 2年全保换新 2年全保换新",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false,
+            "rect": {
+              "left": 92,
+              "top": 18601,
+              "width": 44,
+              "height": 18
+            },
+            "score": 140,
+            "suspect": false,
+            "digits": 3
+          },
+          {
+            "price": 701,
+            "kind": "main",
+            "text": "701.00 3年全保换新 3年全保换新",
+            "label": "701.00 3年全保换新 3年全保换新",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false,
+            "rect": {
+              "left": 92,
+              "top": 18622,
+              "width": 44,
+              "height": 18
+            },
+            "score": 140,
+            "suspect": false,
+            "digits": 3
+          },
+          {
+            "price": 239,
+            "kind": "main",
+            "text": "239.00 3年全保修 3年全保修",
+            "label": "239.00 3年全保修 3年全保修",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false,
+            "rect": {
+              "left": 78,
+              "top": 18664,
+              "width": 44,
+              "height": 18
+            },
+            "score": 140,
+            "suspect": false,
+            "digits": 3
+          },
+          {
+            "price": 389,
+            "kind": "main",
+            "text": "389.00 5年全保修 5年全保修",
+            "label": "389.00 5年全保修 5年全保修",
+            "cls": "service-price",
+            "font": 14,
+            "strike": false,
+            "rect": {
+              "left": 78,
+              "top": 18685,
+              "width": 44,
+              "height": 18
+            },
+            "score": 140,
+            "suspect": false,
+            "digits": 3
+          }
+        ],
+        "candidateCount": 6,
+        "textFallback": false,
+        "elapsedMs": 2823
+      },
+      "err": ""
+    },
+    "radar": {
+      "msg": {
+        "type": "RADAR_ITEM_PRICE_RESULT",
+        "engine": "priceradar-dom/2.0",
+        "sku": "100370009110",
+        "url": "https://item.shop.example.com/100370009110.html",
+        "title": "联想（Lenovo）会议平板触摸屏一体机65英寸电子白板 内置摄像头 视频会议培训教学一体机4k 办公触摸显示器T65SE",
+        "at": "2026-11-17T07:59:31.712Z",
+        "account": {
+          "nickname": "测试账号",
+          "plusHint": false,
+          "source": "dom"
+        },
+        "viewport": {
+          "w": 1440,
+          "h": 900,
+          "scrollY": 0
+        },
+        "ok": true,
+        "reason": "",
+        "flags": {
+          "verify": false,
+          "offSale": false,
+          "offSaleReason": "",
+          "strongOffline": false,
+          "strongBodyOffline": false,
+          "weakOffline": false,
+          "unavailable": false,
+          "hasProductName": true,
+          "genericTitle": false,
+          "titleText": "联想（Lenovo）会议平板触摸屏一体机65英寸电子白板 内置摄像头 视频会议培训教学一体机4k 办公触摸显示器T65SE【行情 报价 价格 评测】-电商平台",
+          "login": false,
+          "plusText": false,
+          "pageState": "product",
+          "bodyLength": 1663
+        },
+        "main": {
+          "price": 5499,
+          "kind": "main",
+          "cls": "product-price--gray",
+          "label": "¥5499 到手价 ¥5149 累计评价 65 降价通知 ¥5149 到手价 累计评价 65 降价通知 product-price-panel page-right-price page-right-sticky-floor page-ri ¥5499 product-price--gray product-price-panel page-right-price ¥5149 到手价 累计评价 6",
+          "font": 14,
+          "rect": {
+            "left": 885,
+            "top": 271,
+            "width": 520,
+            "height": 21
+          },
+          "mainZone": true,
+          "score": 92
+        },
+        "plus": null,
+        "hand": {
+          "price": 5149,
+          "kind": "hand",
+          "cls": "product-price--main",
+          "label": "¥5149 到手价 ¥5499 到手价 ¥5499 累计评价 65 降价通知 product-price-panel page-right-price page-right-sticky-floor page-right-price",
+          "font": 34,
+          "rect": {
+            "left": 885,
+            "top": 223,
+            "width": 97,
+            "height": 44
+          },
+          "mainZone": true,
+          "score": 152
+        },
+        "source": "product-price--main",
+        "confidence": "high",
+        "rect": {
+          "left": 885,
+          "top": 223,
+          "width": 97,
+          "height": 44
+        },
+        "priceChanges": [],
+        "candidates": [
+          {
+            "price": 5149,
+            "kind": "hand",
+            "text": "¥5149 到手价 ¥5499 到手价 ¥5499 累计评价 65 降价通知 product-price-panel page-right-price page-right-sticky-floor page-right-price",
+            "cls": "product-price--main",
+            "font": 34,
+            "strike": false,
+            "mainZone": true,
+            "score": 152
+          },
+          {
+            "price": 5149,
+            "kind": "hand",
+            "text": "5149 ¥ ¥ product-price--main product-price-panel page-right-price 到手价 ¥5499 累计评价 65 降价通知 product-price-panel",
+            "cls": "product-price--value",
+            "font": 34,
+            "strike": false,
+            "mainZone": true,
+            "score": 152
+          },
+          {
+            "price": 5499,
+            "kind": "main",
+            "text": "¥5499 到手价 ¥5149 累计评价 65 降价通知 ¥5149 到手价 累计评价 65 降价通知 product-price-panel page-right-price page-right-sticky-floor page-ri ¥5499 product-price--gray product-price-panel page-right-price ¥5149 到手价 累计评价 6",
+            "cls": "product-price--gray",
+            "font": 14,
+            "strike": true,
+            "mainZone": true,
+            "score": 92
+          }
+        ]
+      },
+      "err": ""
+    }
+  }
+}

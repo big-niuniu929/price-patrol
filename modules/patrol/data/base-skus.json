@@ -1,0 +1,66 @@
+{
+ "generatedAt": "2026-11-10T10:19:24+08:00",
+ "source": "示例数据（真实基表已剔除）",
+ "sheets": [
+  {
+   "name": "示例",
+   "rowCount": 2,
+   "withSku": 2,
+   "missingSku": 0,
+   "deduped": 0,
+   "columns": {
+    "sku": 1,
+    "model": 2,
+    "package": 3,
+    "frontPrice": 4,
+    "utilMin": 5,
+    "utilCurrent": 6,
+    "plusMin": 7,
+    "plusCurrent": 8
+   },
+   "headers": {
+    "1": "sku",
+    "2": "套餐型号",
+    "3": "套餐",
+    "4": "前台价格",
+    "5": "普惠最低到手价",
+    "6": "普惠当前价格",
+    "7": "会员最低到手价",
+    "8": "会员当前价格"
+   },
+   "rows": [
+    {
+     "rowId": "示例!2",
+     "sheet": "示例",
+     "excelRow": 2,
+     "sku": "SAMPLE0001",
+     "note": "",
+     "model": "SAMPLE-MODEL-1",
+     "package": "示例整机 1",
+     "frontPrice": 8999,
+     "utilMin": 8999,
+     "plusMin": 8999,
+     "utilCurrent": 8999,
+     "plusCurrent": 8999
+    },
+    {
+     "rowId": "示例!3",
+     "sheet": "示例",
+     "excelRow": 3,
+     "sku": "SAMPLE0002",
+     "note": "",
+     "model": "SAMPLE-MODEL-2",
+     "package": "示例整机 2",
+     "frontPrice": 9998,
+     "utilMin": 9998,
+     "plusMin": 9998,
+     "utilCurrent": 9998,
+     "plusCurrent": 9998
+    }
+   ]
+  }
+ ],
+ "totalRows": 2,
+ "totalWithSku": 2,
+ "duplicates": {}
+}

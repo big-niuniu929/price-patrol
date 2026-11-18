@@ -1,0 +1,387 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>使用说明 · 价格监控平台</title>
+  <link rel="stylesheet" href="guide.css">
+</head>
+<body class="guide-page">
+  <!-- 图标 sprite：全部内联 SVG，不依赖外部资源（MV3 CSP 安全） -->
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <symbol id="g-brand" viewBox="0 0 24 24"><path d="M3 19V9.5"/><path d="M8.5 19V5"/><path d="M14 19v-6.5"/><path d="M19.5 19V8"/><path d="M2.5 21h19"/></symbol>
+    <symbol id="g-book" viewBox="0 0 24 24"><path d="M4 5h6.2A1.8 1.8 0 0 1 12 6.8V21a2.6 2.6 0 0 0-2.4-1.6H4V5Z"/><path d="M20 5h-6.2A1.8 1.8 0 0 0 12 6.8V21a2.6 2.6 0 0 1 2.4-1.6H20V5Z"/><path d="M6.6 8.6h2.8"/><path d="M6.6 12h2.8"/></symbol>
+    <symbol id="g-shield" viewBox="0 0 24 24"><path d="M12 3 4.8 5.8v5.4c0 4.3 2.9 7.6 7.2 9.5 4.3-1.9 7.2-5.2 7.2-9.5V5.8L12 3Z"/><path d="m8.9 11.8 2.1 2.1 4.1-4.4"/></symbol>
+    <symbol id="g-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.6"/><path d="m10.8 12.6 7.4-7.4"/><path d="m15.6 7.8 2.2 2.2"/><path d="m18 5.4 2.2 2.2"/></symbol>
+    <symbol id="g-arrow" viewBox="0 0 24 24"><path d="M5 12h13"/><path d="m13 6.5 5.5 5.5L13 17.5"/></symbol>
+  </svg>
+
+  <header class="gd-top">
+    <div class="gd-brand">
+      <span class="gd-mark"><svg class="icon"><use href="#g-brand"/></svg></span>
+      <span class="gd-brand-copy">
+        <b>价格监控平台</b>
+        <em>PRICE MONITORING PLATFORM</em>
+      </span>
+    </div>
+    <div class="gd-meta">
+      <span class="pill"><i class="dot ok"></i>本机数据 · 不上传</span>
+      <span class="pill ghost">v1.1.4</span>
+    </div>
+  </header>
+
+  <main class="gd-main">
+    <div class="gd-hero">
+      <p class="eyebrow">USER GUIDE · 操作手册</p>
+      <h1>使用说明</h1>
+      <p class="gd-lead">这份说明写给第一次使用「价格监控平台」的同事：它是什么、三个业务怎么用、价格是怎么取到的、数据存在哪里。全部读完约 10 分钟，遇到问题可以直接跳到<a href="#faq">常见问题</a>。</p>
+      <div class="gd-tags">
+        <span>适用版本 v1.1.4</span>
+        <span>浏览器扩展（Edge / Chrome）</span>
+        <span>面向非技术同事</span>
+      </div>
+    </div>
+
+    <nav class="gd-toc" aria-label="目录">
+      <span class="gd-toc-title">目录</span>
+      <a href="#intro">一、平台与安装</a>
+      <a href="#business">二、三个业务</a>
+      <a href="#pricing">三、取价逻辑</a>
+      <a href="#baseline">四、基准价与记录表</a>
+      <a href="#privacy">五、数据与隐私</a>
+      <a href="#faq">六、常见问题</a>
+      <a href="#web">七、后续 Web 版</a>
+    </nav>
+
+    <!-- ==================== 一、平台与安装 ==================== -->
+    <section class="gd-section" id="intro">
+      <div class="gd-section-head">
+        <span class="gd-index">01</span>
+        <h2>一、平台是什么、怎么打开</h2>
+      </div>
+      <p>「价格监控平台」是一个 <b>Edge / Chrome 浏览器扩展</b>（MV3）。它把原来三个独立插件——<b>价格巡检</b>、<b>市场占有率</b>、<b>竞品监控</b>——合并到一个入口里：点扩展图标 → 先「选择业务」→ 进入对应业务的界面。三个业务的界面与原来的插件完全一致，数据各自独立保存在本机浏览器。</p>
+
+      <h3>第一次安装（约 1 分钟）</h3>
+      <ol class="gd-steps">
+        <li>地址栏打开 <code>edge://extensions/</code>（Chrome 为 <code>chrome://extensions/</code>），打开「开发人员模式」。</li>
+        <li>点「加载解压缩的扩展」，选择包含 <code>manifest.json</code> 的「价格监控平台」文件夹。</li>
+        <li>在浏览器的扩展菜单里把「价格监控平台」固定到工具栏（图钉图标），以后点图标即可打开平台页。</li>
+        <li>如果之前装过原来的三个插件：建议先在旧插件里导出数据，再在扩展管理页禁用或移除旧插件——否则同一个电商平台商品页会同时被旧插件和新平台的取价脚本重复扫描，白白多跑几套采集，也更容易触发风控。</li>
+      </ol>
+      <div class="gd-callout warn">
+        <b>注意：扩展 ID 与扩展所在文件夹的路径绑定。</b>
+        同一个文件夹重新加载，数据还在；换电脑、换文件夹或重装，浏览器会把它当成一个新扩展，旧数据不会自动带过来。迁移方法见<a href="#privacy">第五节</a>。
+      </div>
+
+      <h3>「先选业务」的工作方式</h3>
+      <p>打开平台后默认停在选择业务页，共四张卡片：价格巡检 / 市场占有率 / 竞品监控 / 使用说明。点卡片进入，顶部会出现一条 52px 的细导航条：</p>
+      <ul class="gd-list">
+        <li><b>左侧「价格监控平台」、右侧「业务选择」</b>：回到选择业务页（也可以按 <kbd>Esc</kbd>）。</li>
+        <li><b>中间的业务按钮</b>：在业务之间直接切换，也能一键切到「使用说明」。</li>
+        <li><b>右上「独立打开」</b>：把当前业务（或使用说明）单独开成一个标签页，打开的是该页面的原生版本、不带平台导航条。</li>
+        <li><b>记住上次业务</b>：平台会记住你上次进入的业务，并在首页对应卡片上标「上次使用」。</li>
+        <li><b>键盘快捷键</b>：在首页按 <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> 进入三个业务，按 <kbd>4</kbd> 打开使用说明。</li>
+        <li><b>深链</b>：在地址栏的 <code>app.html</code> 后面加 <code>#/patrol</code>、<code>#/share</code>、<code>#/radar</code>、<code>#/guide</code>，可直接打开对应页面（收藏或转发给同事时很有用）。</li>
+      </ul>
+      <div class="gd-callout">
+        <b>长时间采集请用「独立打开」。</b>
+        在平台里切换业务会卸载当前业务的页面，正在跑的采集会中断。跑几十上百个 SKU 时，请用右上角「独立打开」在单独标签页里跑。
+      </div>
+    </section>
+
+    <!-- ==================== 二、三个业务 ==================== -->
+    <section class="gd-section" id="business">
+      <div class="gd-section-head">
+        <span class="gd-index">02</span>
+        <h2>二、三个业务分别做什么</h2>
+      </div>
+      <p>三个业务解决三类问题，彼此独立：</p>
+      <div class="gd-table-wrap">
+        <table>
+          <thead>
+            <tr><th>业务</th><th>解决什么问题</th><th>典型产出</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>价格巡检</b><br><span class="gd-sub">双轨版</span></td>
+              <td>按 SKU 巡检表批量核对电商平台到手价，普惠号 / PLUS 号各跑一遍，低于阈值自动标红。</td>
+              <td>巡检表回填、CSV、待上报 Excel</td>
+            </tr>
+            <tr>
+              <td><b>市场占有率</b></td>
+              <td>导入电商平台榜单 Excel，补齐尺寸段 / 价格段 / 型号 / 套餐，统计品牌市占率并回填。</td>
+              <td>市占统计看板、回填 xlsx</td>
+            </tr>
+            <tr>
+              <td><b>竞品监控</b><br><span class="gd-sub">竞品价格雷达</span></td>
+              <td>按竞品清单（176 个 SKU）批量采价，识别降价 / 涨价 / 历史新低 / 采集异常，维护基准价与记录表。</td>
+              <td>导出最新数据 CSV、完整备份 JSON、波动看板</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>2.1 价格巡检：按表核对到手价</h3>
+      <p>适合「手上有一份 SKU 巡检表，要定期知道每个 SKU 当前到手价、是否低于阈值」的场景。</p>
+      <ol class="gd-steps">
+        <li><b>确认巡检表。</b>内置 4 类目基表（品牌A / 大家电 / 3C 店铺 / 音视频店），也可以导入自己的巡检表或基表。</li>
+        <li><b>选范围。</b>选择本次要巡检的类目 / 范围与数量，建议先小批量试跑。</li>
+        <li><b>选采集轨道。</b>轨道①后台标签页（不打断你正在做的事）；轨道②前台小窗 + AI 复核（更接近人工看页面）。</li>
+        <li><b>普惠号、PLUS 号各跑一遍。</b>两个账号看到的会员价 / 优惠可能不同。</li>
+        <li><b>同品比价。</b>需要时做 3C 店铺 / 大家电同款配对，比较同款商品的价格。</li>
+        <li><b>核对与导出。</b>低于阈值的自动标红；核对后导出 CSV、生成待上报 Excel，或回填巡检表。</li>
+      </ol>
+      <p>可选：价格巡检支持走本机 API 桥采集（默认 <code>http://127.0.0.1:18765/</code>），需要在巡检插件目录里先启动「启动API桥」。官方 API 不是必选项，不启动也不影响页面正常使用，只是「官方API」不可用；新版支持配置多个供应商账号。</p>
+
+      <h3>2.2 市场占有率：先把榜单补齐，再算份额</h3>
+      <ol class="gd-steps">
+        <li><b>导入榜单。</b>导入电商平台榜单 Excel，表头不要求固定格式，平台会自动识别。</li>
+        <li><b>自动补数。</b>按商品补齐尺寸段 / 价格段 / 型号 / 套餐等信息（内置 1100+ SKU 匹配库）。</li>
+        <li><b>在线补采。</b>缺数据的条目按需去商品页补采，补采前可以预览。</li>
+        <li><b>核对。</b>抽样确认补出来的信息是否正确，不对的人工修改。</li>
+        <li><b>统计。</b>用品牌市占统计看板看份额。</li>
+        <li><b>导出。</b>导出回填后的 xlsx，直接交给同事。</li>
+      </ol>
+      <div class="gd-callout">
+        市场占有率的数据量通常最大，建议按榜单分批导入、分批补采；导入新榜单前先导出一份备份。
+      </div>
+
+      <h3>2.3 竞品监控：盯住竞品价格变化</h3>
+      <p>适合「一份 176 个 SKU 的竞品清单，定时采一遍，看谁降了、谁涨了、谁下架了」的场景。</p>
+      <ol class="gd-steps">
+        <li><b>确认清单。</b>进入竞品监控，确认或导入竞品监控清单。</li>
+        <li><b>批量采集。</b>建议用「独立打开」在单独标签页跑，避免切换业务中断采集。</li>
+        <li><b>看状态与异动。</b>采集完成后，降价 / 涨价 / 历史新低 / 采集异常 / 已下架会进异动提醒与波动看板。</li>
+        <li><b>写入今日记录（记录表）。</b>核对无误后点「写入今日记录」，把本批成功采集的最新价一次性写进<b>今天这一列</b>（按钮上会显示待写入个数）。下一轮「较基准%」以每行<b>最近日期列</b>的价格为准，详见<a href="#baseline">第四节</a>。</li>
+        <li><b>导出。</b>「导出最新数据」按当前筛选导出 CSV（Excel 可直接打开，行顺序固定按基表原始顺序、序号 = 基表行号）；「导出 CSV」是整份清单；「导出 JSON」是完整备份，用于迁移 / 恢复。</li>
+        <li><b>记录表管理。</b>点「记录表」可查看「日期 × SKU」矩阵（每次确认新增一列日期）、覆盖 SKU 数，支持导出记录表 CSV、清空记录表。</li>
+      </ol>
+      <div class="gd-callout">
+        竞品监控从 v1.1.1 起已适配 2026 新版电商平台详情页（价格区 / 商品名 / 划线价结构）；「真实下架」按采集成功处理，保留已下架标记与提醒，不再误判为取价失败。
+      </div>
+    </section>
+
+    <!-- ==================== 三、取价逻辑 ==================== -->
+    <section class="gd-section" id="pricing">
+      <div class="gd-section-head">
+        <span class="gd-index">03</span>
+        <h2>三、取价逻辑：价格是怎么取到的</h2>
+      </div>
+      <p>三个业务共用同一套取价原则。理解下面几条，就能判断「为什么这个价格取不到」。</p>
+
+      <h3>3.1 五条硬规则</h3>
+      <ul class="gd-list">
+        <li><b>只读页面 DOM。</b>只读取你在浏览器里看到的商品页内容；不点击、不下单、不调用电商平台接口、不绕过验证。</li>
+        <li><b>锁定主价格区。</b>只在商品详情页的主价格面板里取价（到手价 / 电商平台价 / PLUS 价），不会去页面其它地方找数字。</li>
+        <li><b>排除干扰区域。</b>推荐位、广告、跨平台比价、关联购买、延保服务等模块的价格一律不取。</li>
+        <li><b>只认可见元素。</b>隐藏的、折叠的、尺寸为 0 的价格节点不算数，必须是真实渲染出来的价格。</li>
+        <li><b>不猜价。</b>多个候选价按固定优先级选取；拿不到明确价格就标记「采集异常 / 未取到」，不会用附近数字或「折扣文案」凑一个价格。</li>
+      </ul>
+      <p>另外，同一商品会连续多次读取，价格稳定（连续 3 次一致）并做二次刷新复核后才算有效，减少页面价格异步刷新造成的误读。</p>
+
+      <h3>3.2 2026 新版电商平台详情页适配</h3>
+      <p>电商平台在 2026 年改版了商品详情页，价格区和商品名都换了位置。平台已按新版结构适配：</p>
+      <div class="gd-table-wrap">
+        <table>
+          <thead>
+            <tr><th>用途</th><th>新版页面位置</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>价格面板</td><td><code>.page-right-price</code> 下的 <code>.product-price-panel</code></td></tr>
+            <tr><td>主价格</td><td><code>.product-price--main</code> / <code>.product-price--value</code></td></tr>
+            <tr><td>商品名</td><td><code>.sku-title-name</code></td></tr>
+            <tr><td>划线价</td><td>新版价格面板内的划线价结构</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>旧的 <code>.summary-price</code> / <code>.p-price</code> 结构仍做兼容兜底。如果电商平台再次改版，通常表现为「所有商品都取不到价」，请把商品页截图和 F12 控制台（Console）报错一起发给维护人。</p>
+
+      <h3>3.3 三个业务取价引擎的现状</h3>
+      <div class="gd-table-wrap">
+        <table>
+          <thead>
+            <tr><th>业务</th><th>取价引擎</th><th>说明</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>价格巡检</b></td>
+              <td>v2.1（基准）</td>
+              <td>到手价 / 电商平台价 / PLUS 价选择、干扰模块排除、可见性判定、连续稳定复核等规则在这里定稿；保留同品比价等巡检专属能力。</td>
+            </tr>
+            <tr>
+              <td><b>市场占有率</b></td>
+              <td>按巡检 v2.1 对齐</td>
+              <td>取价口径与巡检一致；额外保留尺寸 / 型号 / 套餐 / 品牌提取能力，用于补数。</td>
+            </tr>
+            <tr>
+              <td><b>竞品监控</b></td>
+              <td>按巡检 v2.1 对齐 + 新版页面适配</td>
+              <td>额外保留置信度、页面状态、下架识别；已适配 2026 新版详情页（价格区 / 商品名 / 划线价），真实下架计为采集成功。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>三个引擎在同一个商品页上的读数口径已经统一：同一个商品，三个业务看到的价格应当一致。</p>
+    </section>
+
+    <!-- ==================== 四、基准价与记录表 ==================== -->
+    <section class="gd-section" id="baseline">
+      <div class="gd-section-head">
+        <span class="gd-index">04</span>
+        <h2>四、基准价、记录表与「波动%」</h2>
+      </div>
+
+      <h3>4.1 三个词</h3>
+      <ul class="gd-list">
+        <li><b>基准价</b>：用来对比的参考价，竞品监控用它计算「较基准%」。</li>
+        <li><b>记录表</b>：按日期记录你确认后的价格快照。点「写入今日记录」后，本批最新价写入<b>今天的日期列</b>；每次确认都会新增一列日期。</li>
+        <li><b>波动%（较基准%）</b>：最新价相对基准价的涨跌百分比，公式为（最新价 − 基准价）÷ 基准价 × 100%。正数是涨、负数是降。</li>
+      </ul>
+
+      <h3>4.2 推荐的使用节奏</h3>
+      <ol class="gd-steps">
+        <li>采一轮，核对异常项。</li>
+        <li>确认当天数据没问题后，点「写入今日记录」，写入今天的日期列。</li>
+        <li>下一轮采集时，「较基准%」以<b>每行最近日期列</b>的价格为准——你的每一次确认都会成为下一轮的对比起点。</li>
+        <li>需要更换起点时，打开「记录表」清空；清空后会退回导入历史 / 首次采集价作为基准。</li>
+      </ol>
+      <div class="gd-callout">
+        <b>先写今日记录，再看波动。</b>
+        没点「写入今日记录」之前，基准来自导入历史或首次采集价，不是「上一轮最新价」。如果发现波动% 和预期不一致，先看记录表里最近一次写入时间。
+      </div>
+    </section>
+
+    <!-- ==================== 五、数据与隐私 ==================== -->
+    <section class="gd-section" id="privacy">
+      <div class="gd-section-head">
+        <span class="gd-index">05</span>
+        <h2>五、数据存在哪、怎么迁移</h2>
+      </div>
+
+      <h3>5.1 数据只在本机</h3>
+      <ul class="gd-list">
+        <li>三个业务的数据各自保存在本机浏览器的 <code>chrome.storage.local</code> 里，存储键彼此独立，切换业务不会互相覆盖。</li>
+        <li>平台不会把业务数据上传到任何服务器。</li>
+        <li>使用说明这一页是纯静态文档，不读写任何数据。</li>
+        <li>唯一的例外是 AI 复核：按原插件说明，只把你配置的接口需要的价格小图发出去；API Key 由你填写，不会写进导出的 JSON。</li>
+      </ul>
+
+      <h3>5.2 同路径重载 / 换路径 / 导出迁移</h3>
+      <div class="gd-table-wrap">
+        <table>
+          <thead>
+            <tr><th>场景</th><th>会发生什么</th><th>建议</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>同一文件夹重新加载扩展</td><td>扩展 ID 不变，数据还在</td><td>直接继续用</td></tr>
+            <tr><td>换电脑 / 换文件夹 / 重装</td><td>扩展 ID 可能变化 = 新存储，旧数据不会自动带过来</td><td>先在旧环境导出 JSON，再在新环境导入</td></tr>
+            <tr><td>只想做备份</td><td>每个业务都有导出入口</td><td>导出的 JSON 就是完整备份，定期存一份</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="gd-table-wrap">
+        <table>
+          <thead>
+            <tr><th>业务</th><th>导出</th><th>导入</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>价格巡检</td><td>工作台「导出 JSON」/「导出基表 JSON」</td><td>「导入数据」/「导入基表」</td></tr>
+            <tr><td>市场占有率</td><td>「导出 → 导出 JSON」</td><td>「导入备份」</td></tr>
+            <tr><td>竞品监控</td><td>「导出 JSON」</td><td>「导入备份」</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="gd-callout warn">
+        导出的 JSON 可能包含商品清单、采集记录、备注等业务信息，转给同事前请先确认内容；AI 的 API Key 不在导出文件里，换环境后需要重新填写。
+      </div>
+    </section>
+
+    <!-- ==================== 六、常见问题 ==================== -->
+    <section class="gd-section" id="faq">
+      <div class="gd-section-head">
+        <span class="gd-index">06</span>
+        <h2>六、常见问题</h2>
+      </div>
+
+      <details class="gd-faq">
+        <summary>点扩展图标没反应 / 平台页打不开</summary>
+        <p>在 <code>edge://extensions/</code> 确认扩展已启用；如果改过文件，点一下「重新加载」。另外扩展文件夹里不能有 <code>_</code> 开头的文件或文件夹（浏览器限制）。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>某个业务点进去是空白页</summary>
+        <p>先用右上角「独立打开」验证该业务单独打开是否正常；再按 <kbd>F12</kbd> 看控制台（Console）有没有报错，把报错截图发给维护人。平台本身不会让业务数据变空，多数是页面加载被拦截或文件缺失。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>取不到价 / 显示采集异常</summary>
+        <p>① 确认已登录电商平台，商品页能正常打开并显示价格；② 刷新商品页重试；③ 只有个别商品取不到：可能是下架 / 无货 / 预售 / 地区差异；④ 所有商品都取不到：多半是电商平台页面又改版了，请把商品页截图和 Console 报错发给维护人，不要自己改代码。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>页面要求安全验证（登录 / 滑块 / 验证码）</summary>
+        <p>立即停止采集，休息一段时间再试。不要尝试绕过验证，也不要频繁刷新。建议使用专用的采集账号，避免影响日常账号。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>采集频控 / 间隔怎么设置比较稳</summary>
+        <p>原则是低频、分批、可暂停：一次不要采太多，间隔不要太小；先用小批量试跑，确认稳定后再放大；一旦出现安全验证就停下来休息。具体数值以业务里的采集设置为准，不要长时间满速跑。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>批次与间隔有什么建议</summary>
+        <p>价格巡检按类目分批（先做 1 个类目的小批）；市场占有率按榜单分批导入和补采；竞品监控按清单分批采集，采完核对后再「写入今日记录」。长任务都建议用「独立打开」在单独标签页里跑。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>导入 / 导出要注意什么</summary>
+        <p>导入前先导出一份当前数据的备份；不要手工改导出的 JSON 结构；「导出最新数据」按当前筛选导出、行顺序固定按基表原始顺序（序号 = 基表行号），交给同事前先确认筛选条件。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>数据看起来是空的</summary>
+        <p>新扩展是全新的本机存储，不会自动继承旧插件的数据。请按<a href="#privacy">第五节</a>从旧插件导出，再到平台对应业务里导入。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>切换业务后正在跑的采集停了</summary>
+        <p>平台切换业务会卸载当前业务页面，采集自然中断。长任务请点「独立打开」，在单独标签页里运行；平台页只用来进入和切换业务。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>装好新平台后，原来的三个插件要不要删</summary>
+        <p>建议先在旧插件里导出数据，再在扩展管理页禁用或移除旧插件。留着旧插件会让同一个商品页被多套取价脚本重复扫描，浪费资源，也更容易触发风控。</p>
+      </details>
+
+      <details class="gd-faq">
+        <summary>价格巡检提示「官方API 未连接」</summary>
+        <p>先在巡检插件目录启动 API 桥（「启动API桥」）。新版支持多供应商账号，需要配套的新版桥程序；旧版桥没有多账号接口时，设置页会提示未连接。不启动 API 桥不影响其它采集方式。</p>
+      </details>
+    </section>
+
+    <!-- ==================== 七、后续 Web 版 ==================== -->
+    <section class="gd-section" id="web">
+      <div class="gd-section-head">
+        <span class="gd-index">07</span>
+        <h2>七、后续 Web 版说明</h2>
+      </div>
+      <p>当前平台是<b>浏览器扩展</b>（Edge / Chrome MV3），数据全部保存在本机。团队正在规划 Web 版，目标是让同事不装扩展、打开链接就能用；<b>Web 版目前尚未上线</b>，请以当前扩展的实际功能为准。</p>
+      <ul class="gd-list">
+        <li><b>数据迁移</b>：扩展数据在本机 <code>chrome.storage</code> 里，Web 版上线后预计通过「导出 JSON → 导入」或一次性迁移工具承接；上线前建议定期导出备份。</li>
+        <li><b>多人共用</b>：Web 版需要考虑账号与权限、数据归属（谁的数据谁能看 / 能改）、并发采集与频控、统一的取价口径；这些在扩展里不需要考虑（每个人本机各存一份）。</li>
+        <li><b>采集方式</b>：Web 版如果要集中采集，需要服务端 / 专用采集端，不能直接复用扩展「打开标签页读 DOM」的方式；届时本说明会同步更新。</li>
+        <li><b>现在能做的准备</b>：每个业务定期导出 JSON 备份；不要在共享电脑上保存登录态与 API Key；记录下你实际在用的流程与字段口径，Web 版迁移时用得上。</li>
+      </ul>
+      <div class="gd-callout">
+        本说明会随版本更新；如果界面与说明不一致，以扩展内实际界面为准。
+      </div>
+    </section>
+  </main>
+
+  <footer class="gd-foot">
+    <span><svg class="icon"><use href="#g-shield"/></svg>只读页面 DOM · 不提交订单 · 低频分批采集</span>
+    <span><svg class="icon"><use href="#g-key"/></svg>所有数据只存本机 <code>chrome.storage.local</code>，不上传</span>
+    <span class="gd-foot-ver">使用说明 · v1.1.4</span>
+  </footer>
+</body>
+</html>

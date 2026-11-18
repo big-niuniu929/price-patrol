@@ -1,0 +1,20 @@
+{
+  "batchSize": 140,
+  "delayMin": 1,
+  "delayMax": 2,
+  "skipCapturedToday": true,
+  "scope": "all",
+  "keepTab": false,
+  "deviationLimit": 500,
+  "deviationConfirmLimit": 1500,
+  "previewDelayMs": 1000,
+  "patrolMode": "foreground",
+  "aiEnabled": true,
+  "aiEndpoint": "https://gateway.example.com/v1",
+  "aiModel": "deepseek-flash",
+  "aiVerifyMode": "fallback",
+  "officialApiUrl": "https://gateway.example.com/v1",
+  "rerunRemember": false,
+  "rerunIdentity": "",
+  "rerunForeground": null
+}

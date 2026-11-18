@@ -1,0 +1,109 @@
+{
+ "schema": "price-radar.watchlist.v1",
+ "meta": {
+  "name": "竞品价格雷达 · 内置监控清单",
+  "sourceFile": "线上竞争数据分析（月度）.xlsx",
+  "sourceSheet": "竞品售价历史（新）",
+  "generatedAt": "2026-11-05T14:14:58+08:00",
+  "count": 2,
+  "withHistoryPrice": 2,
+  "offline": 0,
+  "brands": {
+   "竞品A": 1,
+   "竞品B": 1
+  },
+  "categories": {
+   "会议电视": 43,
+   "会议平板（不含摄麦）": 28,
+   "会议平板（含摄麦）": 70,
+   "LED屏": 2,
+   "会议显示器": 8,
+   "会议平板（送外置摄麦）": 15,
+   "全向麦": 7,
+   "摄像头": 3
+  },
+  "months": [
+   "2025-11",
+   "2025-12",
+   "2026-01",
+   "2026-02",
+   "2026-05",
+   "2026-09",
+   "2026-10",
+   "2026-11",
+   "2026-12",
+   "2027-01"
+  ],
+  "note": "示例数据（真实竞品清单已剔除）"
+ },
+ "skus": [
+  {
+   "id": "SAMPLE0001",
+   "sku": "SAMPLE0001",
+   "brand": "竞品A",
+   "category": "会议电视",
+   "series": "",
+   "system": "安卓",
+   "size": "55英寸",
+   "inch": 55,
+   "model": "",
+   "platform": "电商平台",
+   "history": [
+    {
+     "date": "2026-01",
+     "price": 8299
+    },
+    {
+     "date": "2026-02",
+     "price": 8299
+    },
+    {
+     "date": "2026-03",
+     "price": 8299
+    }
+   ],
+   "offline": true,
+   "tags": [
+    "重点竞品"
+   ],
+   "note": "",
+   "lastPrice": 2199,
+   "lastDate": "2026-02",
+   "basePrice": 8500
+  },
+  {
+   "id": "SAMPLE0002",
+   "sku": "SAMPLE0002",
+   "brand": "竞品B",
+   "category": "会议电视",
+   "series": "",
+   "system": "安卓",
+   "size": "65英寸",
+   "inch": 65,
+   "model": "",
+   "platform": "电商平台",
+   "history": [
+    {
+     "date": "2026-01",
+     "price": 8599
+    },
+    {
+     "date": "2026-02",
+     "price": 8599
+    },
+    {
+     "date": "2026-03",
+     "price": 8599
+    }
+   ],
+   "offline": false,
+   "tags": [
+    "重点竞品"
+   ],
+   "note": "",
+   "lastPrice": 2799,
+   "lastDate": "2026-02",
+   "basePrice": 9000
+  }
+ ]
+}

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电商平台价格巡检工作台</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">¥</span>
+      <div class="brandText">
+        <h1>电商平台价格巡检工作台 <span id="trackBadge" class="trackBadge track2">轨道② · 前台窗口+AI复核</span></h1>
+        <p class="sub">按 SKU 巡检表读取电商平台到手价 · <b id="trackMeta">前台窗口 · AI 复核（截图不保存）</b> · 数据只存本机</p>
+      </div>
+    </div>
+    <div class="topActions">
+      <span id="accountInfo" class="accountInfo">尚未采集</span>
+      <a class="btn ghost" href="https://home.shop.example.com" target="_blank" rel="noreferrer">打开电商平台</a>
+      <button id="helpBtn" class="btn ghost">帮助</button>
+      <button id="aiBtn" class="btn ghost" title="AI 设置与连接测试">AI 设置</button>
+      <button id="settingsBtn" class="btn ghost">设置</button>
+    </div>
+  </header>
+
+  <nav class="viewNav">
+    <button id="tabWorkbench" class="viewTab active" type="button">巡检工作台</button>
+    <button id="tabOverview" class="viewTab" type="button">总览 <span id="reportBadge" class="navBadge hidden">0</span></button>
+    <button id="tabCompare" class="viewTab" type="button">同品比价</button>
+    <span class="viewNavHint" id="viewHint"></span>
+  </nav>
+
+  <main id="viewWorkbench" class="view">
+    <section class="stats" id="statsBar"></section>
+
+    <div class="banner" id="riskBanner">
+      <span><b>使用提醒：</b>只在你手动点击后、按节奏逐个打开商品页读价（可暂停/停止）。请低频、分批、切账号后再跑，建议用专用账号，不要做无人值守高频抓取。</span>
+      <button id="dismissBanner" class="linkBtn">知道了</button>
+    </div>
+
+    <section class="toolbar">
+      <div class="tabs" id="sheetTabs"></div>
+      <div class="filters">
+        <select id="statusFilter" class="input select">
+          <option value="all">全部状态</option>
+          <option value="todo">未采齐</option>
+          <option value="alert">低于阈值</option>
+          <option value="confirm">需人工确认</option>
+          <option value="manual">手动改价</option>
+          <option value="fail">采集失败</option>
+          <option value="nosku">待补 SKU</option>
+          <option value="offline">已下架</option>
+        </select>
+        <input id="searchInput" class="input" type="search" placeholder="搜 SKU / 型号 / 套餐">
+        <button id="exportBtn" class="btn ghost">导出 CSV</button>
+        <button id="exportJsonBtn" class="btn ghost" title="导出完整采集数据（JSON，便于备份/对账）">导出 JSON</button>
+        <button id="importDataBtn" class="btn ghost" title="导入之前导出的 JSON，恢复采集数据/手动改价">导入数据</button>
+        <input id="importDataFile" type="file" accept=".json,application/json" hidden>
+        <button id="manageBaseBtn" class="btn ghost" title="管理内置巡检表：增删改 SKU / 阈值 / 类目">管理基表</button>
+        <button id="importBtn" class="btn ghost" title="支持直接导入 .xlsx 巡检表，或之前导出的基表 JSON">导入基表</button>
+        <input id="importFile" type="file" accept=".xlsx,.xlsm,.json,application/json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+        <button id="resetBaseBtn" class="btn ghost" title="恢复扩展内置的基表">恢复内置</button>
+        <button id="purgeBtn" class="btn ghost danger" title="清空已采集的价格（不影响基表）">清空采集</button>
+      </div>
+    </section>
+
+    <section class="runBar">
+      <div class="trackSwitch" id="trackSwitch" title="选择本次巡检用哪条轨道">
+        <button type="button" class="trackOpt" data-track="track1">轨道① · 后台标签页</button>
+        <button type="button" class="trackOpt active" data-track="track2">轨道② · 前台窗口 + AI</button>
+      </div>
+      <button id="runOfficialBtn" class="btn" title="用官方 API（普惠到手价）批量填充有权限的 SKU">官方API采集（普惠）</button>
+      <button id="runUtilBtn" class="btn primary">普惠号巡检</button>
+      <button id="runPlusBtn" class="btn primary plus">会员号巡检</button>
+      <button id="multiRerunBtn" class="btn" disabled title="勾选表格里的行后重采选中的 SKU（可临时选账号和轨道）">重采选中</button>
+      <button id="pauseBtn" class="btn ghost" disabled>暂停</button>
+      <button id="stopBtn" class="btn ghost danger" disabled>停止</button>
+      <span id="runHint" class="runHint"></span>
+    </section>
+
+    <section class="statusChips">
+      <span id="aiStatusChip" class="chip">AI 检查中…</span>
+      <span id="apiStatusChip" class="chip">官方API 检查中…</span>
+      <span class="chipHint">AI 已预配置，无需填写；采集轨道在上面切换</span>
+    </section>
+  </main>
+
+  <main id="viewOverview" class="view hidden">
+    <section class="ovTopTabs">
+      <div class="tabs ovTabs" id="ovSheetTabs"></div>
+      <span class="ovTopHint">先选类目，再看下面的数据</span>
+    </section>
+
+    <section class="ovCards" id="ovCards"></section>
+
+    <section class="ovProgressWrap">
+      <div class="ovProgressRow">
+        <span class="ovLabel">普惠采集进度</span>
+        <div class="progressBar"><div id="ovUtilFill"></div></div>
+        <span id="ovUtilText" class="ovProgressText">0 / 0</span>
+      </div>
+      <div class="ovProgressRow">
+        <span class="ovLabel">会员采集进度</span>
+        <div class="progressBar"><div id="ovPlusFill"></div></div>
+        <span id="ovPlusText" class="ovProgressText">0 / 0</span>
+      </div>
+    </section>
+
+    <section class="ovToolbar">
+      <div class="ovFilter">
+        <span id="ovFilterHint" class="ovFilterHint">全部 SKU</span>
+        <button id="ovClearFilterBtn" class="linkBtn hidden" type="button">清除筛选</button>
+      </div>
+      <div class="ovActions">
+        <button id="ovConfirmBtn" class="btn" disabled title="确认勾选行里带『需人工确认』的价格（确认后状态转为正常）">确认选中</button>
+        <button id="ovOfflineBtn" class="btn ghost danger" disabled title="把勾选的行批量移入下架库（不再参与巡检，可恢复）">下架选中</button>
+        <button id="ovSummaryBtn" class="btn primary" disabled title="把勾选的行加入待上报区（浅红底色）">汇总选中</button>
+        <button id="ovExportReportBtn" class="btn" disabled>导出待上报 Excel</button>
+        <button id="ovClearReportBtn" class="btn ghost danger" disabled>清空待上报</button>
+      </div>
+    </section>
+  </main>
+
+  <main id="viewCompare" class="view hidden">
+    <section class="cmpHead">
+      <div class="cmpSummary" id="compareSummary">正在统计…</div>
+      <div class="cmpActions">
+        <button id="cmpCollectBtn" class="btn primary" type="button" title="把当前比价的全部 SKU（两个店铺都算）按同一账号、同一轨道采集一遍">采集全部比价 SKU</button>
+        <button id="cmpFilterAll" class="btn ghost active" type="button">全部</button>
+        <button id="cmpFilterDiff" class="btn ghost" type="button">只看有差异</button>
+        <button id="cmpFilterMissing" class="btn ghost" type="button">只看待采齐</button>
+        <button id="cmpExportBtn" class="btn ghost" type="button">导出比价 CSV</button>
+      </div>
+      <p class="cmpHint">按「套餐型号」自动匹配不同店铺的同款产品（忽略空格、<code>-京仓</code>、大小写）；只统计未下架的行。同一产品在不同店铺的 SKU 会并排对比当前到手价。</p>
+    </section>
+    <div id="compareList" class="cmpList"></div>
+  </main>
+
+  <section class="progressWrap hidden" id="progressWrap">
+    <div class="progressTop">
+      <span id="progressText">准备中…</span>
+      <span id="progressPct"></span>
+    </div>
+    <div class="progressBar"><div id="progressFill"></div></div>
+    <div class="runStats" id="runStats"></div>
+    <div class="logPanel" id="logPanel"></div>
+  </section>
+
+  <section class="tableWrap" id="tableWrap">
+    <div class="tableCaption" id="tableCaption"></div>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th class="col-check"><input id="selectAllChk" type="checkbox" title="全选/取消全选（当前筛选结果）"></th>
+          <th class="col-sheet">类目</th>
+          <th class="col-row">行</th>
+          <th class="col-sku">SKU</th>
+          <th class="col-model">套餐型号</th>
+          <th class="col-package">套餐</th>
+          <th class="col-front">前台价</th>
+          <th class="col-thr">普惠阈值</th>
+          <th class="col-price">普惠当前价</th>
+          <th class="col-thr">会员阈值</th>
+          <th class="col-price">会员当前价</th>
+          <th class="col-status">状态</th>
+          <th class="col-eye">预览</th>
+          <th class="col-op">操作</th>
+          <th class="col-filler"></th>
+        </tr>
+      </thead>
+      <tbody id="tblBody"></tbody>
+    </table>
+    <div id="empty" class="empty hidden"></div>
+  </section>
+
+  <section id="reportArea" class="reportArea hidden">
+    <div class="reportHead">
+      <h3>待上报区 <span id="reportCount" class="reportCount">0 条</span></h3>
+      <span class="reportTip">已汇总的行会带浅红底色，确认后导出 Excel 上报</span>
+    </div>
+    <div id="reportList" class="reportList"></div>
+  </section>
+
+  <footer class="foot">
+    <span>识别以 SKU 为准；无 SKU 的行可在表格里直接补（自动保存）。如页面改版导致取价不准，可在「设置 → 调试」查看最近一次采集的原始候选价格。</span>
+    <span id="baseInfo" class="baseInfo"></span>
+  </footer>
+
+
+  <dialog id="baseDialog" class="dialog baseDialog">
+    <div class="dialogForm">
+      <h2>管理内置巡检表</h2>
+      <div class="baseCatBar">
+        <div class="tabs" id="baseCatTabs"></div>
+        <div class="baseCatActions">
+          <button id="baseAddCatBtn" class="btn ghost" type="button">新增类目</button>
+          <button id="baseRenameCatBtn" class="btn ghost" type="button">重命名类目</button>
+          <button id="baseDelCatBtn" class="btn ghost danger" type="button">删除类目</button>
+          <button id="baseExportBtn" class="btn ghost" type="button">导出基表 JSON</button>
+        </div>
+      </div>
+      <div class="baseTableWrap">
+        <table class="tbl baseTbl">
+          <thead>
+            <tr>
+              <th class="base-col-row">行</th>
+              <th class="base-col-sku">SKU</th>
+              <th>套餐型号</th>
+              <th>套餐</th>
+              <th class="base-col-money">前台价</th>
+              <th class="base-col-money">普惠阈值</th>
+              <th class="base-col-money">会员阈值</th>
+              <th class="base-col-del">操作</th>
+            </tr>
+          </thead>
+          <tbody id="baseTblBody"></tbody>
+        </table>
+      </div>
+      <p class="baseTip">提示：改动会保存到本机并覆盖当前使用的基表；想还原内置数据，可在工具栏点「恢复内置」。「导出基表 JSON」可先备份。</p>
+      <div class="dialogActions baseActions">
+        <button id="baseAddRowBtn" class="btn" type="button">新增一行</button>
+        <span class="baseSpacer"></span>
+        <button id="baseCloseBtn" class="btn ghost" type="button">关闭</button>
+        <button id="baseSaveBtn" class="btn primary" type="button">保存修改</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="rerunDialog" class="dialog rerunDialog">
+    <form method="dialog" class="dialogForm">
+      <h2>重新采集</h2>
+      <p class="rerunHint" id="rerunHint">选择本次重采使用的账号和轨道。</p>
+      <label class="field">
+        <span>账号</span>
+        <select id="rerunIdentity" class="input">
+          <option value="util">普惠账号（普通账号看到的价格）</option>
+          <option value="plus">PLUS 会员账号（会员价）</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>轨道</span>
+        <select id="rerunTrack" class="input">
+          <option value="background">轨道① 后台标签页（快，不弹窗）</option>
+          <option value="foreground">轨道② 前台窗口 + AI 复核（会抢焦点，慢）</option>
+        </select>
+      </label>
+      <label class="field row">
+        <input id="rerunRemember" type="checkbox">
+        <span>记住这次选择，下次重采默认使用</span>
+      </label>
+      <div class="dialogActions">
+        <button id="rerunCancel" class="btn ghost" type="button">取消</button>
+        <button id="rerunStart" class="btn primary" type="button">开始重采</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog" class="dialog">
+    <form method="dialog" class="dialogForm" id="settingsForm">
+      <h2>巡检设置</h2>
+      <p class="trackInfo" id="trackInfo">轨道信息加载中…</p>
+      <label class="field">
+        <span>每次最多采集</span>
+        <input id="setBatch" type="number" min="0" step="1" class="input">
+        <em>0 = 全部（按 151 个 SKU 估算约 20–30 分钟）</em>
+      </label>
+      <label class="field">
+        <span>每个页面间隔（秒）</span>
+        <input id="setDelayMin" type="number" min="1" step="1" class="input small"> ~
+        <input id="setDelayMax" type="number" min="1" step="1" class="input small">
+      </label>
+      <label class="field row">
+        <input id="setSkipToday" type="checkbox">
+        <span>跳过今天已经采过的 SKU</span>
+      </label>
+      <label class="field">
+        <span>巡检范围</span>
+        <select id="setScope" class="input">
+          <option value="all">全部类目</option>
+          <option value="current">当前类目</option>
+        </select>
+      </label>
+      <label class="field row">
+        <input id="setKeepTab" type="checkbox">
+        <span>采集结束后保留后台标签页（调试用）</span>
+      </label>
+      <label class="field">
+        <span>采集模式</span>
+        <select id="setPatrolMode" class="input">
+          <option value="foreground">前台小窗（第二轨道，降低后台频控）</option>
+          <option value="background">后台标签页（原轨道）</option>
+        </select>
+      </label>
+      <label class="field row">
+        <input id="setAiEnabled" type="checkbox">
+        <span>启用 AI 复核（只做校验；截图只在内存里用完即删）</span>
+      </label>
+      <label class="field">
+        <span>AI 接口</span>
+        <input id="setAiEndpoint" class="input" style="width:270px">
+        <em>模型</em>
+        <input id="setAiModel" class="input small" style="width:140px">
+      </label>
+      <label class="field">
+        <span>AI Key</span>
+        <input id="setAiKey" class="input" type="password" style="width:340px" placeholder="已预配置，一般不用改">
+        <button id="aiTestBtn" class="btn ghost" type="button" style="margin-left:8px">测试 AI</button>
+      </label>
+      <label class="field">
+        <span>AI 复核模式</span>
+        <select id="setAiVerifyMode" class="input">
+          <option value="fallback">仅 DOM 取不到时用 AI</option>
+          <option value="all">每单都让 AI 复核（只记录不一致，不改 DOM 读数）</option>
+          <option value="off">关闭 AI 复核</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>官方API地址</span>
+        <input id="setOfficialApiUrl" class="input" style="width:250px">
+        <em>（桥已开机自启）</em>
+      </label>
+      <div class="field apiField">
+        <span>官方API账号（电商平台 SP-API，多供应商）</span>
+        <p class="apiAccountInfo">每个供应商 / 店铺一个账号。官方价采集时会按顺序尝试所有账号，哪个账号有这个 SKU 的权限就用哪个的价。修改后点「保存」立即生效，不用改文件、不用重启桥。</p>
+        <div id="apiAccountList" class="apiAccountList">
+          <div class="apiAccountInfo">账号状态加载中…</div>
+        </div>
+        <div class="apiActions">
+          <button id="apiAddBtn" class="btn ghost" type="button">+ 新增供应商账号</button>
+          <button id="apiRefreshBtn" class="btn ghost" type="button">刷新账号状态</button>
+        </div>
+        <div id="apiAccountInfo" class="apiAccountInfo"></div>
+      </div>
+      <label class="field">
+        <span>预览悬停延迟</span>
+        <em>鼠标停在眼睛上</em>
+        <input id="setPreviewDelay" type="number" min="300" max="5000" step="100" class="input small">
+        <em>毫秒后弹出商品页小窗（300–5000）</em>
+      </label>
+      <label class="field">
+        <span>价格偏离阈值</span>
+        <em>差价超过</em>
+        <input id="setDeviationLimit" type="number" min="0" step="100" class="input small">
+        <em>元 → 仅提示（不再自动多采）；超过</em>
+        <input id="setDeviationConfirm" type="number" min="0" step="100" class="input small">
+        <em>元标「需人工确认」</em>
+      </label>
+      <div class="field debugField">
+        <span>调试：最近一次采集的原始价格候选</span>
+        <button id="copyDebugBtn" class="btn ghost" type="button">复制调试 JSON</button>
+      </div>
+      <pre id="debugBox" class="debugBox">暂无</pre>
+      <div class="dialogActions">
+        <button id="settingsCancel" class="btn ghost" value="cancel">取消</button>
+        <button id="settingsSave" class="btn primary" value="default">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="helpDialog" class="dialog helpDialog">
+    <div class="dialogForm">
+      <h2>使用说明</h2>
+      <ol class="helpList">
+        <li><b>先装好</b>：打开扩展管理页（Chrome：<code>chrome://extensions/</code>；Edge：<code>edge://extensions/</code>）→ 打开「开发人员模式」→「加载解压缩的扩展」→ 选择 <code>extension</code> 文件夹 → 固定到工具栏。</li>
+        <li><b>采普惠价</b>：在浏览器里登录普通/普惠电商平台账号 → 点扩展图标打开工作台 → 点「普惠号巡检」。默认每批 40 个、间隔 3–6 秒，可随时暂停/继续/停止。</li>
+        <li><b>采会员价</b>：退出账号，登录 <b>PLUS 会员</b>账号 → 再点「会员号巡检」。两列价格会并排显示。</li>
+        <li><b>总览页</b>：点顶部「总览」可看整体进度、各状态数量；点数字筛选查看对应行；表格同样可以手动改价。</li>
+        <li><b>同品比价</b>：点顶部「同品比价」，会按「套餐型号」自动把不同店铺（3C店铺 / 大家电）里的同款产品配成一组（忽略空格、-京仓、大小写），并排对比两边采集到的普惠价 / 会员价；有价差的组会排在最前面并标红，可只看差异、导出比价 CSV。只有未下架且两边都是同一型号的行才会配对。页面顶部还有「<b>采集全部比价 SKU</b>」按钮：一键把这 30 个比价 SKU 用同一个账号、同一条轨道重新采一遍，采集完自动刷新对比。</li>
+        <li><b>汇总上报</b>：在总览勾选要上报的行 → 「汇总选中」→ 行变浅红底色进入「待上报区」→ 「导出待上报 Excel」。</li>
+        <li><b>成交价校验</b>：只记录页面读数与阈值的偏离，不会自动"挑一个接近阈值的值"；差价超过 500 元只提示，超过 1500 元标「需人工确认」。核对无误点价格旁的「确认」→ 状态变「正常」；如需改价点「改」。</li>
+        <li><b>确认 / 改价 / 重采</b>：带「需人工确认」的价格点「确认」→ 状态转「正常」；点「改」手动修正；重采时（单行「重采」或勾选后「重采选中」）会弹窗让你选<b>账号（普惠/会员）</b>和<b>轨道（后台标签页/前台窗口+AI）</b>，可以记住默认选择。</li>
+        <li><b>小眼睛预览</b>：表格右侧「预览」列的眼睛，鼠标悬停会弹出商品页小窗，移开自动关闭；点一下可固定窗口，再点关闭。悬停多久弹出可在「设置 → 预览悬停延迟」里调整（默认 1000 毫秒）。</li>
+        <li><b>下架库</b>：确认商品已下架，点「下架」移入下架库（默认隐藏、下次巡检不再出现；按 SKU 记录，重新导入基表也保留）；在状态筛选「已下架」里可点「恢复」放回来。</li>
+        <li><b>没有 SKU 的行</b>：在表格里直接补（纯数字，自动保存）；也可以补进 Excel 后重新生成基表。</li>
+        <li><b>管理基表</b>：工具栏「管理基表」可直接增删改 SKU、套餐型号、前台价、阈值和类目；可先「导出基表 JSON」备份，改完点「保存修改」立即生效；需要还原就点「恢复内置」。</li>
+        <li><b>导入 Excel 基表</b>：工具栏「导入基表」可以直接选 .xlsx 巡检表（表头要有 sku、套餐型号；列顺序随意；sheet 名=类目），导入时自动按 SKU 去重、重复 SKU 保留最后一条数据；如果阈值写成简单公式（如 <code>=E58-1060</code>）也会自动算出来；导入前会显示「与当前基表对比：新增 SKU / 普惠阈值 / 会员阈值 / 前台价 各多少处变化」。</li>
+        <li><b>双轨切换</b>：运行条最左边「轨道① 后台标签页 / 轨道② 前台窗口+AI」可随时切换；两条轨道用的是同一套取价脚本，差别只在打开方式（后台标签页 / 前台小窗）。</li>
+        <li><b>AI 已预配置</b>：AI 接口、模型、Key 都已写好（数据在本机）；AI 只做校验/兜底，不覆盖 DOM 读数，截图只在内存里用完即删、不保存。</li>
+        <li><b>官方API</b>：API 桥开机自启（Startup 里有快捷脚本），点「官方API采集（普惠）」即可。账号凭据可在「设置 → 官方API账号（大家电）」里直接填写 appKey / appSecret / accessToken，点「保存并测试」会用基表里的大家电 SKU 试读一次；token 失效会报「access_token 无效」，重新粘贴新 token 即可，不用改文件。</li>
+        <li><b>取价不准</b>：设置 →「复制调试 JSON」，发给我按页面结构调整识别规则。</li>
+      </ol>
+      <p class="helpNote">数据只存在本机浏览器（chrome.storage.local），不上传服务器。请低频、分批使用，不要做无人值守高频抓取；看到安全验证就停止。</p>
+      <div class="dialogActions">
+        <button id="helpClose" class="btn primary" type="button">知道了</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

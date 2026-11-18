@@ -1,0 +1,1278 @@
+{
+  "generatedAt": "2026-11-17T09:26:12.530Z",
+  "mode": "platform",
+  "browserE2E": "run",
+  "fatalError": null,
+  "extDir": "~/Desktop/三合一\\价格监控平台",
+  "extensionId": "iegegmaeojncdljmeacnkcpmjilladhd",
+  "viewport": "1440x900",
+  "durationMs": 39086,
+  "env": {
+    "node": "v24.19.0",
+    "browserPath": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "browserVersion": "Edg/157.0.4341.60",
+    "cdpPort": 9587,
+    "extIdDerived": null
+  },
+  "jsdomFrom": null,
+  "summary": {
+    "verdict": "PASS",
+    "total": 67,
+    "passed": 67,
+    "failed": 0,
+    "consoleErrors": 0,
+    "screenshots": 12
+  },
+  "checks": [
+    {
+      "id": "S1",
+      "title": "manifest.json 存在且 JSON 可解析",
+      "ok": true,
+      "durationMs": 5,
+      "detail": "name=价格监控平台 · 电商平台价格与竞品监控三合一 · version=1.1.5 · manifest_version=3",
+      "error": null
+    },
+    {
+      "id": "S2",
+      "title": "manifest 符合合并规格（MV3 / 名称 / background / permissions / host_permissions）",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "permissions=storage,tabs,unlimitedStorage,clipboardWrite · hosts=6 条",
+      "error": null
+    },
+    {
+      "id": "S3",
+      "title": "content_scripts 注入三个模块的 content.js",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "modules/patrol/content.js, modules/share/content.js, modules/radar/content.js",
+      "error": null
+    },
+    {
+      "id": "S4",
+      "title": "app.html 含 #moduleFrame、四张卡片 data-biz（三业务 + guide），且无内联脚本（MV3 CSP）",
+      "ok": true,
+      "durationMs": 2,
+      "detail": "10KB · 四卡片四切换按钮齐全 · 无内联脚本/远程资源",
+      "error": null
+    },
+    {
+      "id": "S5",
+      "title": "modules/<id>/app.html 存在；模块根 manifest.json/background.js 已移除",
+      "ok": true,
+      "durationMs": 8,
+      "detail": "patrol: 9 项 · share: 7 项 · radar: 7 项",
+      "error": null
+    },
+    {
+      "id": "S6",
+      "title": "模块关键数据 JSON 已就位",
+      "ok": true,
+      "durationMs": 5,
+      "detail": "patrol: 2 个 · share: 1 个 · radar: 1 个",
+      "error": null
+    },
+    {
+      "id": "S7",
+      "title": "icons 16/32/48/128 存在",
+      "ok": true,
+      "durationMs": 3,
+      "detail": "16/32/48/128 齐全",
+      "error": null
+    },
+    {
+      "id": "S8",
+      "title": "平台根 README.md 存在且非空",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "17KB",
+      "error": null
+    },
+    {
+      "id": "S9",
+      "title": "使用说明页 guide.html + guide.css 存在，符合 MV3 CSP，关键小节齐全",
+      "ok": true,
+      "durationMs": 3,
+      "detail": "16KB · 13KB CSS · 无内联脚本/事件/远程资源 · 小节 7 项",
+      "error": null
+    },
+    {
+      "id": "B1",
+      "title": "启动 headless Edge 并加载扩展：~/Desktop/三合一\\价格监控平台",
+      "ok": true,
+      "durationMs": 2037,
+      "detail": "CDP 9587 · Edg/157.0.4341.60 · extDir=~/Desktop/三合一\\价格监控平台",
+      "error": null
+    },
+    {
+      "id": "B2",
+      "title": "扩展加载成功且定位到本扩展 ID（background service worker 存在）",
+      "ok": true,
+      "durationMs": 1590,
+      "detail": "extId=iegegmaeojncdljmeacnkcpmjilladhd（未匹配路径推导变体，仅记录）",
+      "error": null
+    },
+    {
+      "id": "B3",
+      "title": "打开 chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/app.html 并完成首屏",
+      "ok": true,
+      "durationMs": 3541,
+      "detail": "title=价格监控平台 · readyState=complete · body=833 字符",
+      "error": null
+    },
+    {
+      "id": "B4",
+      "title": "业务选择页：四张卡片 [data-biz=patrol|share|radar|guide] 齐全且可见 +「选择业务」文案",
+      "ok": true,
+      "durationMs": 16,
+      "detail": "patrol「01 价格巡检 PRICE PATROL · 」 · share「02 市场占有率 MARKET SHARE W」 · radar「03 竞品监控 COMPETITOR PRIC」 · guide「04 使用说明 USER GUIDE · 操作」 · h1=选择业务",
+      "error": null
+    },
+    {
+      "id": "B5",
+      "title": "平台页无内联脚本与内联事件处理器（MV3 CSP）",
+      "ok": true,
+      "durationMs": 21,
+      "detail": "inline script 0 · inline handler 0",
+      "error": null
+    },
+    {
+      "id": "B6",
+      "title": "首页截图 01-platform-home-1440.png",
+      "ok": true,
+      "durationMs": 799,
+      "detail": "qa/shots/01-platform-home-1440.png",
+      "error": null
+    },
+    {
+      "id": "B7",
+      "title": "首页无 console error（允许 warning）",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "console error 0（累计 0）",
+      "error": null
+    },
+    {
+      "id": "M-patrol-enter",
+      "title": "点击首页业务卡片进入「价格巡检」",
+      "ok": true,
+      "durationMs": 54,
+      "detail": "card [data-biz=\"patrol\"]「01\n            \n            价格巡检\n       」",
+      "error": null
+    },
+    {
+      "id": "M-patrol-1",
+      "title": "iframe#moduleFrame 加载 modules/patrol/app.html",
+      "ok": true,
+      "durationMs": 487,
+      "detail": "src= · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html · readyState=complete · text=501 · tables=2/rows=0",
+      "error": null
+    },
+    {
+      "id": "M-patrol-2",
+      "title": "「价格巡检」首屏关键 DOM 渲染（#viewWorkbench / #tblBody / #statsBar）",
+      "ok": true,
+      "durationMs": 3,
+      "detail": "命中 #viewWorkbench, #tblBody(不可见), #statsBar · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html · text=501 · tables=2 rows=0 · title=电商平台价格巡检工作台",
+      "error": null
+    },
+    {
+      "id": "M-patrol-2b",
+      "title": "「价格巡检」iframe 尺寸合理（宽 ≥1000、高 ≥400）",
+      "ok": true,
+      "durationMs": 4,
+      "detail": "1440x848",
+      "error": null
+    },
+    {
+      "id": "M-patrol-2c",
+      "title": "「价格巡检」加载遮罩已消失（#frameMask.done）",
+      "ok": true,
+      "durationMs": 2,
+      "detail": "mask.done=true",
+      "error": null
+    },
+    {
+      "id": "M-patrol-3",
+      "title": "「价格巡检」关键数据 JSON 均 200",
+      "ok": true,
+      "durationMs": 401,
+      "detail": "modules/patrol/data/base-skus.json → 200 (60189 chars)；modules/patrol/data/ai-config.json → 200 (254 chars)",
+      "error": null
+    },
+    {
+      "id": "M-patrol-4",
+      "title": "「价格巡检」截图 02-module-patrol-1440.png",
+      "ok": true,
+      "durationMs": 114,
+      "detail": "qa/shots/02-module-patrol-1440.png",
+      "error": null
+    },
+    {
+      "id": "M-patrol-5",
+      "title": "「价格巡检」阶段 console 零 error",
+      "ok": true,
+      "durationMs": 1,
+      "detail": "0（页面累计 0）",
+      "error": null
+    },
+    {
+      "id": "M-patrol-6",
+      "title": "「价格巡检」阶段关键资源无 4xx/5xx/加载失败",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "关键资源全部正常（data json 已另测）",
+      "error": null
+    },
+    {
+      "id": "M-share-enter",
+      "title": "用顶部切换按钮 [data-switch-biz=\"share\"] 切到「市占率」",
+      "ok": true,
+      "durationMs": 286,
+      "detail": "[data-switch-biz=\"share\"]「市场占有率」",
+      "error": null
+    },
+    {
+      "id": "M-share-1",
+      "title": "iframe#moduleFrame 加载 modules/share/app.html",
+      "ok": true,
+      "durationMs": 495,
+      "detail": "src= · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html · readyState=complete · text=854 · tables=3/rows=0",
+      "error": null
+    },
+    {
+      "id": "M-share-2",
+      "title": "「市占率」首屏关键 DOM 渲染（#page-workbench / [data-page-target=\"workbench\"]）",
+      "ok": true,
+      "durationMs": 20,
+      "detail": "命中 #page-workbench, [data-page-target=\"workbench\"] · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html · text=854 · tables=3 rows=0 · title=电商平台市占率数据工作台",
+      "error": null
+    },
+    {
+      "id": "M-share-2b",
+      "title": "「市占率」iframe 尺寸合理（宽 ≥1000、高 ≥400）",
+      "ok": true,
+      "durationMs": 4,
+      "detail": "1440x848",
+      "error": null
+    },
+    {
+      "id": "M-share-2c",
+      "title": "「市占率」加载遮罩已消失（#frameMask.done）",
+      "ok": true,
+      "durationMs": 4,
+      "detail": "mask.done=true",
+      "error": null
+    },
+    {
+      "id": "M-share-3",
+      "title": "「市占率」关键数据 JSON 均 200",
+      "ok": true,
+      "durationMs": 330,
+      "detail": "modules/share/data/base-skus.json → 200 (252198 chars)",
+      "error": null
+    },
+    {
+      "id": "M-share-4",
+      "title": "「市占率」截图 03-module-share-1440.png",
+      "ok": true,
+      "durationMs": 1964,
+      "detail": "qa/shots/03-module-share-1440.png",
+      "error": null
+    },
+    {
+      "id": "M-share-5",
+      "title": "「市占率」阶段 console 零 error",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "0（页面累计 0）",
+      "error": null
+    },
+    {
+      "id": "M-share-6",
+      "title": "「市占率」阶段关键资源无 4xx/5xx/加载失败",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "关键资源全部正常（data json 已另测）",
+      "error": null
+    },
+    {
+      "id": "M-radar-enter",
+      "title": "用顶部切换按钮 [data-switch-biz=\"radar\"] 切到「竞品监控」",
+      "ok": true,
+      "durationMs": 87,
+      "detail": "[data-switch-biz=\"radar\"]「竞品监控」",
+      "error": null
+    },
+    {
+      "id": "M-radar-1",
+      "title": "iframe#moduleFrame 加载 modules/radar/app.html",
+      "ok": true,
+      "durationMs": 674,
+      "detail": "src= · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.html · readyState=complete · text=1336 · tables=10/rows=393",
+      "error": null
+    },
+    {
+      "id": "M-radar-2",
+      "title": "「竞品监控」首屏关键 DOM 渲染（#viewDashboard / #viewTitle）",
+      "ok": true,
+      "durationMs": 87,
+      "detail": "命中 #viewDashboard, #viewTitle · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.html · text=1345 · tables=10 rows=393 · title=竞品价格雷达 · 电商平台竞品价格监控",
+      "error": null
+    },
+    {
+      "id": "M-radar-2b",
+      "title": "「竞品监控」iframe 尺寸合理（宽 ≥1000、高 ≥400）",
+      "ok": true,
+      "durationMs": 5,
+      "detail": "1440x848",
+      "error": null
+    },
+    {
+      "id": "M-radar-2c",
+      "title": "「竞品监控」加载遮罩已消失（#frameMask.done）",
+      "ok": true,
+      "durationMs": 3,
+      "detail": "mask.done=true",
+      "error": null
+    },
+    {
+      "id": "M-radar-3",
+      "title": "「竞品监控」关键数据 JSON 均 200",
+      "ok": true,
+      "durationMs": 135,
+      "detail": "modules/radar/data/competitor-skus.json → 200 (125977 chars)",
+      "error": null
+    },
+    {
+      "id": "M-radar-4",
+      "title": "「竞品监控」截图 04-module-radar-1440.png",
+      "ok": true,
+      "durationMs": 338,
+      "detail": "qa/shots/04-module-radar-1440.png",
+      "error": null
+    },
+    {
+      "id": "M-radar-5",
+      "title": "「竞品监控」阶段 console 零 error",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "0（页面累计 0）",
+      "error": null
+    },
+    {
+      "id": "M-radar-6",
+      "title": "「竞品监控」阶段关键资源无 4xx/5xx/加载失败",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "关键资源全部正常（data json 已另测）",
+      "error": null
+    },
+    {
+      "id": "D1",
+      "title": "顶部业务切换按钮 [data-switch-biz] 四个入口齐全（三业务 + 使用说明）",
+      "ok": true,
+      "durationMs": 4,
+      "detail": "patrol「价格巡检」 · share「市场占有率」 · radar「竞品监控」 · guide「使用说明」",
+      "error": null
+    },
+    {
+      "id": "D2",
+      "title": "返回首页：回到业务选择页（四张卡片重新可见）",
+      "ok": true,
+      "durationMs": 280,
+      "detail": "点击方式=#homeBtn「价格监控平台\n          \n          —」",
+      "error": null
+    },
+    {
+      "id": "D2b",
+      "title": "返回首页截图 06-platform-home-back-1440.png",
+      "ok": true,
+      "durationMs": 1126,
+      "detail": "qa/shots/06-platform-home-back-1440.png",
+      "error": null
+    },
+    {
+      "id": "D3",
+      "title": "从首页重新进入「市占率」（首页↔业务切换往返）",
+      "ok": true,
+      "durationMs": 737,
+      "detail": "iframe docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html · text=854",
+      "error": null
+    },
+    {
+      "id": "D4",
+      "title": "独立标签页打开：新标签页直接打开当前业务模块页且首屏渲染正常",
+      "ok": true,
+      "durationMs": 1974,
+      "detail": "点击=#openTabBtn · 新标签页=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html · biz=share · title=电商平台市占率数据工作台 · text=855 · 命中=#page-workbench,[data-page-target=\"workbench\"] · tables=3/rows=0",
+      "error": null
+    },
+    {
+      "id": "D3b",
+      "title": "浏览器后退：1 次回到上一个业务（iframe 正文非空），2 次回到业务选择首页（四卡片）",
+      "ok": true,
+      "durationMs": 3642,
+      "detail": "后退 1 次 → hash=#/patrol · 巡检正文 501 字符；后退 2 次 → 首页四卡片可见 · iframe=about:blank",
+      "error": null
+    },
+    {
+      "id": "D5",
+      "title": "深链 #/patrol 冷启动：直接打开 app.html#/patrol 落在巡检业务",
+      "ok": true,
+      "durationMs": 3388,
+      "detail": "hash=#/patrol · iframe docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html · text=16202",
+      "error": null
+    },
+    {
+      "id": "D5b",
+      "title": "深链截图 07-deeplink-patrol-1440.png",
+      "ok": true,
+      "durationMs": 178,
+      "detail": "qa/shots/07-deeplink-patrol-1440.png",
+      "error": null
+    },
+    {
+      "id": "D6",
+      "title": "刷新后深链 #/patrol 仍落在巡检业务",
+      "ok": true,
+      "durationMs": 2351,
+      "detail": "刷新后 hash=#/patrol · iframe docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html · text=16202",
+      "error": null
+    },
+    {
+      "id": "D7",
+      "title": "深链+刷新阶段 console 零 error、无关键资源失败",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "console error 0 · 网络问题 0",
+      "error": null
+    },
+    {
+      "id": "G1",
+      "title": "首页点击 [data-biz=guide] 卡片进入「使用说明」：iframe 文档为 guide.html，面包屑/标题/高亮同步",
+      "ok": true,
+      "durationMs": 626,
+      "detail": "点击卡片「04 使用说明 」→ iframe docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/guide.html · hash=#/guide · 面包屑=使用说明 · 正文 5390 字符",
+      "error": null
+    },
+    {
+      "id": "G2",
+      "title": "使用说明页内容检查：h1=使用说明、7 个小节标题齐全、guide.css 生效、无内联脚本/事件/远程资源",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "h1=使用说明 · h2 7 个（一、平台是什么、怎么打开 / 二、三个业务分别做什么 / 三、取价逻辑：价格是怎么取到的 / 四、基准价、记录表与「波动%」 / 五、数据存在哪、怎么迁移 / 六、常见问题 / 七、后续 Web 版说明）· 正文 5390 字符 · CSS 已加载 · CSP 干净",
+      "error": null
+    },
+    {
+      "id": "G3",
+      "title": "深链 #/guide 冷启动：直接打开 app.html#/guide 落在使用说明",
+      "ok": true,
+      "durationMs": 3203,
+      "detail": "hash=#/guide · crumb=使用说明 · iframe docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/guide.html · 正文 5390 字符",
+      "error": null
+    },
+    {
+      "id": "G4",
+      "title": "顶部切换条也能切到「使用说明」：从使用说明切到巡检，再切回使用说明",
+      "ok": true,
+      "durationMs": 532,
+      "detail": "切换方式=使用说明 · docUrl=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/guide.html · 正文 5390 字符",
+      "error": null
+    },
+    {
+      "id": "G5",
+      "title": "使用说明「独立打开」：新标签页打开 chrome-extension://<id>/guide.html 且渲染正常",
+      "ok": true,
+      "durationMs": 839,
+      "detail": "新标签页=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/guide.html · title=使用说明 · 价格监控平台 · 正文 5390 字符 · console error 0",
+      "error": null
+    },
+    {
+      "id": "G6",
+      "title": "使用说明页截图 10-guide-1440.png",
+      "ok": true,
+      "durationMs": 759,
+      "detail": "qa/shots/10-guide-1440.png",
+      "error": null
+    },
+    {
+      "id": "G7",
+      "title": "使用说明阶段 console 零 error、guide.html/guide.css 无 4xx/5xx/加载失败",
+      "ok": true,
+      "durationMs": 1,
+      "detail": "console error 0 · 网络问题 0",
+      "error": null
+    },
+    {
+      "id": "E1",
+      "title": "全程 console 零 error 汇总",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "0 条",
+      "error": null
+    },
+    {
+      "id": "E2",
+      "title": "全程关键资源（data/*.json 及 modules/ 资源）无 4xx/5xx/失败",
+      "ok": true,
+      "durationMs": 1,
+      "detail": "data json 响应全部正常",
+      "error": null
+    },
+    {
+      "id": "C0",
+      "title": "拦截 https://item.shop.example.com/* 并返回本地 mock 商品页（不联网真实电商平台）",
+      "ok": true,
+      "durationMs": 2282,
+      "detail": "URL=https://item.shop.example.com/100012043978.html · title=电商平台商品页（本地 mock · 不联网） · docFulfilled=1 · other=1",
+      "error": null
+    },
+    {
+      "id": "C1",
+      "title": "三个 content.js 共存注入：同一页面三个 guard 均为 true",
+      "ok": true,
+      "durationMs": 2,
+      "detail": "isolated 上下文 1 个 · patrol/share/radar 全 true（context#3 价格监控平台 · 电商平台价格与竞品监控三合一）",
+      "error": null
+    },
+    {
+      "id": "C2",
+      "title": "content.js 无 SyntaxError / Identifier already declared 类脚本级错误",
+      "ok": true,
+      "durationMs": 1,
+      "detail": "0 条（mock 页 console error 共 0 条）",
+      "error": null
+    },
+    {
+      "id": "C3",
+      "title": "mock 商品页 console 干净（content.js 初始化无异常）",
+      "ok": true,
+      "durationMs": 0,
+      "detail": "console error 0 条",
+      "error": null
+    },
+    {
+      "id": "C4",
+      "title": "mock 页截图 09-content-scripts-coexist-1440.png",
+      "ok": true,
+      "durationMs": 76,
+      "detail": "qa/shots/09-content-scripts-coexist-1440.png",
+      "error": null
+    }
+  ],
+  "consoleErrors": [],
+  "contentCoexistence": {
+    "contexts": [
+      {
+        "id": 3,
+        "name": "价格监控平台 · 电商平台价格与竞品监控三合一",
+        "origin": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd"
+      }
+    ],
+    "lastStates": [
+      {
+        "contextId": 3,
+        "name": "价格监控平台 · 电商平台价格与竞品监控三合一",
+        "patrol": true,
+        "share": true,
+        "radar": true
+      }
+    ],
+    "found": {
+      "contextId": 3,
+      "name": "价格监控平台 · 电商平台价格与竞品监控三合一",
+      "patrol": true,
+      "share": true,
+      "radar": true
+    }
+  },
+  "contentConsoleErrors": [],
+  "knownBenign": {
+    "triggered": false,
+    "consoleErrors": [],
+    "network": [],
+    "note": "modules/patrol/data/preset-settings.json 已补为空 {}（本次运行返回 200），404 噪音已消失，knownBenign 过滤未触发。"
+  },
+  "network": {
+    "responses": [
+      {
+        "seq": 5,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 6,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 7,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 8,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 9,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/preset-settings.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 10,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 11,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 12,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 14,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 15,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 16,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 18,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/pipeline.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 19,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/rules.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 20,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/store-schema.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 21,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/xlsx-write.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 22,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/header-map.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 23,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/xlsx-read.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 24,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/capture-client.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 25,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 26,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 27,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 28,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 29,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 30,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 31,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/data/competitor-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 32,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/radar/data/competitor-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 33,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 34,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 35,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 37,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/xlsx-write.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 38,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/pipeline.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 39,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/capture-client.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 40,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/xlsx-read.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 41,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/rules.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 42,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/store-schema.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 43,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/header-map.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 44,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 45,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 46,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 47,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 48,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/preset-settings.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 49,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 50,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 51,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 52,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 54,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/header-map.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 55,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 56,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 57,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 58,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/preset-settings.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 59,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 60,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 65,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 66,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 67,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 68,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/preset-settings.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 69,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 70,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 75,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 76,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 77,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 78,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/preset-settings.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 79,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 80,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 89,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 90,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 91,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 92,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/preset-settings.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 93,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/data/ai-config.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      },
+      {
+        "seq": 0,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html",
+        "status": 200,
+        "mime": "text/html",
+        "type": "Document"
+      },
+      {
+        "seq": 1,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 2,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.css",
+        "status": 200,
+        "mime": "text/css",
+        "type": "Stylesheet"
+      },
+      {
+        "seq": 4,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/xlsx-write.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 5,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/header-map.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 6,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/pipeline.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 7,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/store-schema.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 8,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/rules.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 9,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/xlsx-read.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 10,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/lib/capture-client.js",
+        "status": 200,
+        "mime": "text/javascript",
+        "type": "Script"
+      },
+      {
+        "seq": 11,
+        "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/data/base-skus.json",
+        "status": 200,
+        "mime": "application/json",
+        "type": "Fetch"
+      }
+    ],
+    "failures": []
+  },
+  "screenshots": [
+    {
+      "name": "01-platform-home-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\01-platform-home-1440.png",
+      "note": "业务选择页（首页）"
+    },
+    {
+      "name": "02-module-patrol-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\02-module-patrol-1440.png",
+      "note": "价格巡检首屏（进入方式：card [data-biz=\"patrol\"]「01\n            \n            价格巡检\n       」）"
+    },
+    {
+      "name": "03-module-share-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\03-module-share-1440.png",
+      "note": "市占率首屏（进入方式：[data-switch-biz=\"share\"]「市场占有率」）"
+    },
+    {
+      "name": "04-module-radar-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\04-module-radar-1440.png",
+      "note": "竞品监控首屏（进入方式：[data-switch-biz=\"radar\"]「竞品监控」）"
+    },
+    {
+      "name": "05-independent-tab-share-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\05-independent-tab-share-1440.png",
+      "note": "独立标签页（chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html）"
+    },
+    {
+      "name": "06-platform-home-back-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\06-platform-home-back-1440.png",
+      "note": "从业务返回首页"
+    },
+    {
+      "name": "07-deeplink-patrol-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\07-deeplink-patrol-1440.png",
+      "note": "深链 #/patrol 冷启动"
+    },
+    {
+      "name": "08-history-back-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\08-history-back-1440.png",
+      "note": "后退 1 次：回到上一个业务「价格巡检」（无白屏）"
+    },
+    {
+      "name": "08b-history-back-home-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\08b-history-back-home-1440.png",
+      "note": "后退 2 次：回到业务选择首页（四卡片可见）"
+    },
+    {
+      "name": "09-content-scripts-coexist-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\09-content-scripts-coexist-1440.png",
+      "note": "三个 content.js 共存验证（item.shop.example.com 本地 mock）"
+    },
+    {
+      "name": "10-guide-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\10-guide-1440.png",
+      "note": "使用说明页（顶部切换进入，平台内 iframe）"
+    },
+    {
+      "name": "11-independent-tab-guide-1440.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots\\11-independent-tab-guide-1440.png",
+      "note": "使用说明独立标签页（chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/guide.html）"
+    }
+  ],
+  "notes": [],
+  "newTab": {
+    "url": "chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/share/app.html",
+    "title": "电商平台市占率数据工作台",
+    "biz": "share"
+  },
+  "home": {
+    "readyState": "complete",
+    "title": "价格监控平台",
+    "bodyLen": 833,
+    "bodyHead": "价格监控平台\nPRICE MONITORING PLATFORM\n本机数据 · 不上传\nv1.0.0\n\nSTEP 1 · CHOOSE BUSINESS\n\n选择业务\n\n三个业务与一份使用说明共用一个入口，界面与原来的插件完全一致；数据各自独立保存在本机浏览器。\n\n01\n价格巡检\nPRICE PATROL · 双轨版\n按 SKU 巡检表批量核对电商平台到手价，普惠号 / PLUS 号各跑一遍，低于阈值自"
+  },
+  "screenshotNote": "截图均为 1440×900 视口、headless Edge 真实渲染：01 首页（四卡片）、02~04 三业务首屏、05 独立标签页、06 返回首页、07 深链 #/patrol、08/08b 两步后退、09 content.js 共存 mock 页、10 使用说明页、11 使用说明独立标签页。",
+  "verification": {
+    "at": "2026-11-17T09:26:12.530Z",
+    "atLocal": "2026-11-17 17:26:12 (UTC+8)",
+    "mode": "platform（headless Edge 真实浏览器 E2E）",
+    "viewport": "1440x900",
+    "browser": "Edg/157.0.4341.60",
+    "cdpPort": 9587,
+    "node": "v24.19.0",
+    "extDir": "~/Desktop/三合一\\价格监控平台",
+    "extensionId": "iegegmaeojncdljmeacnkcpmjilladhd",
+    "durationMs": 39086,
+    "screenshots": 12
+  },
+  "productFixes": [
+    {
+      "title": "iframe 导航改用 contentWindow.location.replace（修复浏览器后退白屏）",
+      "detail": "平台根 app.js 不再写 iframe 的 src 属性，改用 contentWindow.location.replace(absUrl) 切业务，避免 iframe 导航写进浏览器历史导致后退白屏/历史错乱。副作用：iframe.getAttribute(\"src\") 为空，本脚本已统一改为读取 contentDocument.URL / contentWindow.location.href（share 会带 #workbench）。"
+    },
+    {
+      "title": "modules/patrol/data/preset-settings.json 补为空对象 {}",
+      "detail": "patrol 源码插件 data/ 本来没有该文件，modules/patrol/app.js:366 的 fetch 会 404（虽在 try/catch 内）；本轮补空 {} 后 404 console/网络噪音消失，M-patrol 阶段与 E1/E2 均为 0 error。"
+    },
+    {
+      "title": "「独立打开」= 业务原生页",
+      "detail": "顶部「独立打开」在新标签页直接打开 modules/<biz>/app.html（原插件原生页面、不带平台导航条），用于长时间采集；D4 按此行为断言：新 target URL 含 /modules/<biz>/app.html、正文/关键 DOM 正常、零 console error。"
+    },
+    {
+      "title": "新增第 4 个入口「使用说明」（guide.html）",
+      "detail": "首页从三张卡片扩展为四张（patrol/share/radar/guide）；顶部切换条新增 [data-switch-biz=\"guide\"]；支持深链 #/guide 冷启动；「独立打开」对 guide 生成 chrome-extension://<id>/guide.html（G1~G7 断言）。guide.html 是纯静态同源扩展页：无内联脚本/事件处理器、无远程资源，样式在 guide.css。"
+    }
+  ],
+  "residualRisks": [
+    "未在真实 item.shop.example.com 商品页验证真实取价逻辑：C0~C4 用 CDP Fetch 拦截返回本地 mock 页，只验证三个 content.js 共存注入与 guard，不覆盖真实电商平台页面的登录/风控/价格区差异。",
+    "未验证 AI 复核（AI 设置/连接测试/截图复核）与官方 API 桥（127.0.0.1:18765）的完整联调；仅验证模块首屏与本机数据加载。",
+    "未覆盖多标签页并发采集、双击/重复点击、扩展升级/重载后的 chrome.storage 迁移等边界场景。",
+    "未覆盖 headless 下的真实交互细节：鼠标悬停预览、剪贴板写入、Excel 文件导入/导出等（需要真实文件选择框或用户手势）。",
+    "content.js 共存只验证注入/guard/无脚本级错误；三类业务消息（PATROL_/SHARE_/RADAR_）的端到端收发由真实采集链路覆盖，不在本次验收范围。",
+    "三个模块原有业务的完整回归（实际采集流程、统计导出、待上报等）不在本次验收范围；本次验证的是「合并后平台壳 + 三业务首屏可用 + 使用说明页可读」。",
+    "使用说明页按 README/产品现状编写（取价逻辑、新版页面适配、记录表语义、数据迁移等），本次只验证页面结构、导航、CSP 与零 console error，未逐条与三个业务的运行时行为做交叉复核。",
+    "本地 patrol 巡检 API 桥在验收时处于运行状态（/healthz 200），未验证桥未启动时 patrol 页面降级表现。"
+  ]
+}

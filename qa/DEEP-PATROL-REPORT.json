@@ -1,0 +1,788 @@
+{
+  "generatedAt": "2026-11-10T04:39:53.875Z",
+  "scope": "价格监控平台（平台壳）+ modules/patrol 巡检 v1.3.4 深度真实浏览器验收",
+  "environment": {
+    "node": "v24.19.0",
+    "browserPath": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "browserVersion": "Edg/157.0.4341.42",
+    "extId": "iegegmaeojncdljmeacnkcpmjilladhd",
+    "cdpPort": 9447,
+    "extDir": "~/Desktop/三合一\\价格监控平台",
+    "viewport": "1440x900",
+    "downloadDir": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI",
+    "oldBasePath": "~/Desktop/三合一\\价格监控平台\\qa\\fixtures\\materials\\base-skus-20261109-2025.json",
+    "oldBaseGeneratedAt": "2026-11-09T20:25:06+08:00",
+    "xlsxPath": "~/Desktop/三合一\\价格监控平台\\qa\\fixtures\\materials\\SKU巡检表.xlsx",
+    "apiBridgeUp": true,
+    "apiBridgeInfo": "accounts=品牌B官方自营旗舰店/品牌B大家电自营店",
+    "startedAt": "2026-11-10T04:38:16.328Z"
+  },
+  "summary": {
+    "total": 51,
+    "passed": 48,
+    "failed": 0,
+    "skipped": 3,
+    "durationMs": 97470,
+    "consoleErrorsReal": 0,
+    "consoleErrorsExpected": 1,
+    "fatal": null
+  },
+  "expectations": {
+    "base": {
+      "sheets": [
+        {
+          "name": "品牌A",
+          "rows": 36,
+          "withSku": 36
+        },
+        {
+          "name": "大家电",
+          "rows": 53,
+          "withSku": 51
+        },
+        {
+          "name": "3C店铺",
+          "rows": 48,
+          "withSku": 43
+        },
+        {
+          "name": "音视频店",
+          "rows": 16,
+          "withSku": 16
+        }
+      ],
+      "totalRows": 153,
+      "withSku": 146,
+      "noSku": 7,
+      "compareGroups": 15,
+      "compareSkus": 30,
+      "comparePair": {
+        "group": "SG65CAB",
+        "a": {
+          "sheet": "大家电",
+          "sku": "100274532085",
+          "rowId": "大家电!2",
+          "utilMin": 4099
+        },
+        "b": {
+          "sheet": "3C店铺",
+          "sku": "100170086647",
+          "rowId": "3C店铺!2",
+          "utilMin": 4099
+        }
+      }
+    },
+    "oldBaseGeneratedAt": "2026-11-09T20:25:06+08:00",
+    "builtinGeneratedAt": "2026-11-10T10:19:24+08:00"
+  },
+  "assertions": [
+    {
+      "id": "S1",
+      "title": "启动 headless Edge 并加载扩展、定位扩展 ID：~/Desktop/三合一\\价格监控平台",
+      "status": "pass",
+      "durationMs": 3381,
+      "detail": "CDP 9447 · Edg/157.0.4341.42 · extId=iegegmaeojncdljmeacnkcpmjilladhd",
+      "error": null,
+      "repro": "launchBrowser({extDir: 价格监控平台}) → findExtensionId",
+      "evidence": []
+    },
+    {
+      "id": "S2",
+      "title": "打开平台页并定位主 target，内置关键数据 JSON 均 200",
+      "status": "pass",
+      "durationMs": 3319,
+      "detail": "target=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/app.html · base-skus.json:60189字符 ai-config.json:254字符 preset-settings.json:486字符",
+      "error": null,
+      "repro": "PageSession.connect → navigate app.html → fetch 内置 data JSON",
+      "evidence": []
+    },
+    {
+      "id": "S3",
+      "title": "下载通道就绪：页面内触发小文件下载，Browser.downloadProgress 报告已落盘",
+      "status": "pass",
+      "durationMs": 3113,
+      "detail": "qa-download-probe.txt 17B · ~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\qa-download-probe.txt",
+      "error": null,
+      "repro": "页面内 a[download] data URL → 监听 Browser.downloadProgress completed.filePath",
+      "evidence": []
+    },
+    {
+      "id": "P1",
+      "title": "业务选择页：三张业务卡片齐全可见、文案正确、上次使用标记初始隐藏",
+      "status": "pass",
+      "durationMs": 9,
+      "detail": "patrol/share/radar · title=价格监控平台",
+      "error": null,
+      "repro": "打开 app.html，检查 [data-biz] 三卡片与 #landing 首屏",
+      "evidence": []
+    },
+    {
+      "id": "P2",
+      "title": "点击首页「价格巡检」卡片：工作区显示、iframe 指向 modules/patrol/app.html、hash=#/patrol、面包屑正确",
+      "status": "pass",
+      "durationMs": 547,
+      "detail": "iframe=patrol/app.html · hash=#/patrol · crumb=价格巡检",
+      "error": null,
+      "repro": "首页点击 [data-biz=\"patrol\"]，等 iframe 载入后检查 workspace/hash/crumb",
+      "evidence": []
+    },
+    {
+      "id": "P3",
+      "title": "平台 iframe 内巡检首屏正常：4 个类目 tab（+全部）、表格 153 行、统计卡片 8 个；iframe 内切「大家电」后 53 行",
+      "status": "pass",
+      "durationMs": 1074,
+      "detail": "tabs=全部/146 品牌A/36 大家电/51 3C店铺/43 音视频店/16 · iframe 大家电→53 行",
+      "error": null,
+      "repro": "进入巡检 iframe 后读取 #sheetTabs/#tblBody，点击大家电 tab",
+      "evidence": []
+    },
+    {
+      "id": "P4",
+      "title": "顶部切换 [data-switch-biz=share]：iframe 切到 modules/share/app.html、hash=#/share、面包屑=市场占有率",
+      "status": "pass",
+      "durationMs": 723,
+      "detail": "hash=#/share · iframe=share/app.html · 正文 854 字符",
+      "error": null,
+      "repro": "点击 [data-switch-biz=\"share\"]，等待 iframe 加载 share 模块",
+      "evidence": []
+    },
+    {
+      "id": "P5",
+      "title": "顶部切换 [data-switch-biz=radar]：iframe 切到 modules/radar/app.html、hash=#/radar、面包屑=竞品监控",
+      "status": "pass",
+      "durationMs": 581,
+      "detail": "hash=#/radar · iframe=radar/app.html · 正文 631 字符",
+      "error": null,
+      "repro": "点击 [data-switch-biz=\"radar\"]，等待 iframe 加载 radar 模块",
+      "evidence": []
+    },
+    {
+      "id": "P6",
+      "title": "顶部「业务选择」返回首页：landing 可见、iframe 释放为 about:blank、hash 清空、竞品监控卡片带「上次使用」标记",
+      "status": "pass",
+      "durationMs": 747,
+      "detail": "landing=可见 · frame=about:blank · 上次使用=radar",
+      "error": null,
+      "repro": "业务页点 #backBtn，检查首页三卡片与 [data-last-badge]",
+      "evidence": []
+    },
+    {
+      "id": "P7",
+      "title": "首页从卡片重新进入「市场占有率」，按 Esc 返回业务选择（键盘交互）",
+      "status": "pass",
+      "durationMs": 1146,
+      "detail": "卡片进入市占率 → Esc 回首页",
+      "error": null,
+      "repro": "首页点 share 卡片，按 Esc；检查 landing/hash",
+      "evidence": []
+    },
+    {
+      "id": "P8",
+      "title": "首页键盘「3」直达竞品监控（快捷键 1/2/3）",
+      "status": "pass",
+      "durationMs": 276,
+      "detail": "hash=#/radar · iframe 正文 631 字符",
+      "error": null,
+      "repro": "首页 document 派发 keydown key=3",
+      "evidence": []
+    },
+    {
+      "id": "P9",
+      "title": "深链 #/patrol 冷启动：直接打开 app.html#/patrol 落在价格巡检，刷新后仍在巡检",
+      "status": "pass",
+      "durationMs": 5696,
+      "detail": "冷启动 hash=#/patrol · 刷新后 hash=#/patrol · iframe 正文 16202 字符",
+      "error": null,
+      "repro": "导航 app.html#/patrol → Page.reload",
+      "evidence": []
+    },
+    {
+      "id": "P10",
+      "title": "「独立打开」：新标签页直接打开 modules/patrol/app.html 且首屏渲染正常",
+      "status": "pass",
+      "durationMs": 805,
+      "detail": "新标签页=chrome-extension://iegegmaeojncdljmeacnkcpmjilladhd/modules/patrol/app.html · 153 行 · title=【双轨版 · 轨道②】电商平台价格巡检工作台",
+      "error": null,
+      "repro": "巡检 iframe 下点 #openTabBtn，检查新 page target URL/首屏",
+      "evidence": []
+    },
+    {
+      "id": "P11",
+      "title": "浏览器后退：首页→巡检→市占率 后，后退 1 次回巡检（hash=#/patrol、iframe 非空），后退 2 次回业务选择",
+      "status": "pass",
+      "durationMs": 4269,
+      "detail": "后退1次 hash=#/patrol/crumb=价格巡检 · 后退2次 hash=\"\"/iframe=about:blank",
+      "error": null,
+      "repro": "首页→巡检→市占率，history.back() 两次",
+      "evidence": []
+    },
+    {
+      "id": "P12",
+      "title": "平台壳阶段（含巡检/市占率/竞品 iframe 加载）console 零真实 error",
+      "status": "pass",
+      "durationMs": 1,
+      "detail": "真实 error 0 · 累计 console 条目 0",
+      "error": null,
+      "repro": "平台壳全流程结束后读取 page.consoleErrors",
+      "evidence": []
+    },
+    {
+      "id": "P13",
+      "title": "平台壳关键页截图（首页 / 巡检工作区 / 独立标签页 / 后退首页）",
+      "status": "pass",
+      "durationMs": 4309,
+      "detail": "01-platform-home / 02-platform-patrol / 03-platform-deeplink-patrol / 04-platform-independent-tab / 05-platform-history-back",
+      "error": null,
+      "repro": "平台壳截图",
+      "evidence": []
+    },
+    {
+      "id": "M0",
+      "title": "巡检页初始化：state/computeStats 可观测、基表 153 行、表格已渲染",
+      "status": "pass",
+      "durationMs": 3,
+      "detail": "state 可访问 · 基表 153 行 · 表格 153 行 · 预览按钮 146 个",
+      "error": null,
+      "repro": "打开 modules/patrol/app.html，读取 state/document",
+      "evidence": []
+    },
+    {
+      "id": "M-SORT",
+      "title": "表格排序（点表头排序）",
+      "status": "skip",
+      "durationMs": 0,
+      "detail": "v1.3.4 产品未提供表格排序交互：DOM 中可排序表头控件 0 个；表头仅做展示。属需求范围差异，不是回归 bug，需 Lead 确认。",
+      "error": null,
+      "repro": "",
+      "evidence": []
+    },
+    {
+      "id": "M-PAGE",
+      "title": "表格分页",
+      "status": "skip",
+      "durationMs": 0,
+      "detail": "v1.3.4 产品无分页组件（DOM 匹配 pager/pagination 节点 0 个），表格一次渲染全部 153 行。需 Lead 确认是否需求遗漏。",
+      "error": null,
+      "repro": "",
+      "evidence": []
+    },
+    {
+      "id": "M-DRAWER",
+      "title": "行详情 SKU 抽屉",
+      "status": "skip",
+      "durationMs": 0,
+      "detail": "产品无 SKU 抽屉交互（DOM 中抽屉节点 0 个）；行详情能力由 SKU 链接 / 改价 / 重采 / 下架 / 👁 预览入口承担，预览见 M29。",
+      "error": null,
+      "repro": "",
+      "evidence": []
+    },
+    {
+      "id": "M1",
+      "title": "巡检首屏：双轨徽标/标题、5 个类目 tab（含数量）、8 个统计卡片、基表信息=内置 153 行、AI/API 状态 chip",
+      "status": "pass",
+      "durationMs": 16,
+      "detail": "tabs=全部·146 品牌A·36 大家电·51 3C店铺·43 音视频店·16 · chips=8 · baseInfo=基表：4 个类目 · 153 行 · 146 行有 SKU · 生成于 11-10 10:19｜当前使用：内置基表 · AI=AI 已就绪 · deepseek-flash · API=官方API 已连接 · 2 个账号",
+      "error": null,
+      "repro": "打开巡检模块页读取 #sheetTabs/#statsBar/#baseInfo",
+      "evidence": []
+    },
+    {
+      "id": "M2",
+      "title": "4 个类目 tab 切换：类目名/行数与基表一致，首行类目正确，最后切回「全部」153 行",
+      "status": "pass",
+      "durationMs": 348,
+      "detail": "品牌A:36 · 大家电:53 · 3C店铺:48 · 音视频店:16 · 全部→153",
+      "error": null,
+      "repro": "依次点击 #sheetTabs 4 个类目 tab",
+      "evidence": []
+    },
+    {
+      "id": "M3",
+      "title": "总览页：12 个数字卡片逐一点击筛选（active/hint/行数/空状态），再点一次回到全部；类目筛选 + 清除筛选",
+      "status": "pass",
+      "durationMs": 10364,
+      "detail": "12 卡片逐一点击 ✓（全部行=153 普惠已采集=0 会员已采集=0 低于阈值=0 高于/等于阈值=0 偏离阈值=0 需人工确认=0 手动改价=0 采集失败=0 未采集=146 待补 SKU=7 已下架=0）· 类目筛选/清除筛选 ✓",
+      "error": null,
+      "repro": "总览页遍历 #ovCards 12 卡片点击 + #ovSheetTabs 类目 + #ovClearFilterBtn",
+      "evidence": []
+    },
+    {
+      "id": "M4",
+      "title": "工作台搜索与状态筛选：SKU 精确搜索 1 行、型号搜索多行、无结果空状态、待补 SKU 7 行、全部 153 行",
+      "status": "pass",
+      "durationMs": 3162,
+      "detail": "SKU 搜索 1 行 · 型号搜索 10 行 · 无结果空状态 ✓ · 待补 7 行 · 全部 153 行",
+      "error": null,
+      "repro": "搜索框输入/清空、#statusFilter 切换 nosku/offline/all",
+      "evidence": []
+    },
+    {
+      "id": "M5",
+      "title": "行勾选：全选 146 行→「重采选中 (146)」、取消→恢复；单行勾选→「重采选中 (1)」",
+      "status": "pass",
+      "durationMs": 1626,
+      "detail": "全选=重采选中 (146) · 取消=重采选中 · 单行=重采选中 (1)",
+      "error": null,
+      "repro": "勾选 #selectAllChk / 单行 checkbox，读 #multiRerunBtn 文案",
+      "evidence": []
+    },
+    {
+      "id": "M6",
+      "title": "手动改价（普惠列）：大家电 100274532085 改为 ¥4000 → 状态/统计/采集记录正确",
+      "status": "pass",
+      "durationMs": 961,
+      "detail": "toast=已手动保存 ¥4,000 · capture=4000/manual · 手动改价1 · 低于阈值1 · 行状态=低于阈值",
+      "error": null,
+      "repro": "搜索 SKU=100274532085 → 第8列「改」→ 输入 4000 回车",
+      "evidence": []
+    },
+    {
+      "id": "M7",
+      "title": "手动改价（第二行）：3C店铺 100170086647 改为 ¥4500 → 手动改价 2、普惠已采集 2",
+      "status": "pass",
+      "durationMs": 956,
+      "detail": "capture=4500/manual · 手动改价2 · 普惠已采集2/146",
+      "error": null,
+      "repro": "搜索 SKU=100170086647 → 第8列「改」→ 输入 4500 回车",
+      "evidence": []
+    },
+    {
+      "id": "M8",
+      "title": "同品比价：15 组 / 30 SKU；全部/只看有差异(1组,差¥500)/只看待采齐 切换；导出比价 CSV 真实落盘且内容正确",
+      "status": "pass",
+      "durationMs": 2977,
+      "detail": "summary=同款分组 15 组（大家电 / 3C店铺）｜共 30 个 SKU｜有差异 1 组｜一致 0 组｜待采齐 15 组 · 全部 15 组 · 有差异 1 组(差¥500) · 待采齐 15 组 · CSV=2.7KB",
+      "error": null,
+      "repro": "同品比价 tab → 依次点 #cmpFilterAll/#cmpFilterDiff/#cmpFilterMissing → #cmpExportBtn",
+      "evidence": []
+    },
+    {
+      "id": "M9",
+      "title": "「采集全部比价 SKU」弹窗：提示 15 组 / 30 个 SKU，含账号+轨道选择，取消后无副作用",
+      "status": "pass",
+      "durationMs": 46,
+      "detail": "hint=一键采集比价产品：15 组同款 / 30 个 SKU（两个店铺都算）。 请选择用哪个账号（普惠 / 会员）和哪条轨道采集；选中账号后请确认浏览器当前登录的就是该账号。 · 账号 util/plus · 轨道 background/foreground · 取消无副作用",
+      "error": null,
+      "repro": "同品比价页点 #cmpCollectBtn → 检查 #rerunDialog → 取消",
+      "evidence": []
+    },
+    {
+      "id": "M10",
+      "title": "管理基表弹窗：4 类目 tab（+全部）、首类目 36 行、导出基表 JSON 真实落盘（4 类目/153 行/146 有 SKU）",
+      "status": "pass",
+      "durationMs": 2370,
+      "detail": "类目 tab=全部·153 品牌A·36 大家电·53 3C店铺·48 音视频店·16 · 首类目 36 行 · 导出 61.9KB",
+      "error": null,
+      "repro": "#manageBaseBtn → #baseExportBtn → #baseCloseBtn",
+      "evidence": []
+    },
+    {
+      "id": "M11",
+      "title": "导入基表（上一步导出的 JSON，与当前一致）：confirm 展示 4 类目/153 行，alert 提示无变化，基表仍 153 行",
+      "status": "pass",
+      "durationMs": 885,
+      "detail": "confirm=4类目/153行 · alert=完全一致 · baseInfo=基表：4 个类目 · 153 行 · 146 行有 SKU · 生成于 11-10 12:39｜当前使用：SKU巡检表-基表备份-20261110.json的基表（保存于 11-10 12:39）",
+      "error": null,
+      "repro": "#importBtn → DOM.setFileInputFiles(#importFile, 基表备份JSON) → confirm/alert 自动确认",
+      "evidence": []
+    },
+    {
+      "id": "M12",
+      "title": "导入基表（真实 SKU巡检表.xlsx）：confirm 展示 154 行，alert 展示变化明细，导入后 154 行生效",
+      "status": "pass",
+      "durationMs": 1278,
+      "detail": "confirm=154行 · alert=基表已导入并生效。 会员阈值 1 处、型号 1 处 变化明细： · 100326999922（会员阈值）：13959 → 12439 · 100326999922（型号）：SH86CAB+MT81 → SH86CAB(MT81A) · 100326999922（套餐）：空 → SH86双系统单机 · toast=基表已导入：4 个类目 · 154 行 · 146 行有 SKU；会员阈值 1 处、型号 1 处 · baseInfo=基表：4 个类目 · 154 行 · 146 行有 SKU · 生成于 11-10 12:39｜当前使用：SKU巡检表.xlsx的基表（保存于 11-10 12:39）",
+      "error": null,
+      "repro": "#importBtn → DOM.setFileInputFiles(#importFile, _work/.../SKU巡检表.xlsx) → confirm/alert 自动确认",
+      "evidence": []
+    },
+    {
+      "id": "M13",
+      "title": "「恢复内置」：confirm 后基表回到内置 153 行，baseInfo 显示「内置基表」",
+      "status": "pass",
+      "durationMs": 592,
+      "detail": "baseInfo=基表：4 个类目 · 153 行 · 146 行有 SKU · 生成于 11-10 10:19｜当前使用：内置基表",
+      "error": null,
+      "repro": "#resetBaseBtn → confirm 接受",
+      "evidence": []
+    },
+    {
+      "id": "M14",
+      "title": "设置弹窗：取消不保存；改 batch/间隔/跳过今天/预览延迟/偏离阈值 + patrolMode 后保存，重开与刷新后值都在",
+      "status": "pass",
+      "durationMs": 3836,
+      "detail": "取消不保存 ✓ · 保存重开 ✓ · 刷新后 batch=5/delay=2-4/preview=800/dev=600-1600",
+      "error": null,
+      "repro": "#settingsBtn → 改字段 → #settingsSave → 重开/Page.reload",
+      "evidence": []
+    },
+    {
+      "id": "M15",
+      "title": "「AI 设置」按钮打开设置弹窗：AI 接口/模型/Key/复核模式已预配置（不发起外部 AI 请求）",
+      "status": "pass",
+      "durationMs": 703,
+      "detail": "AI 接口预配置 · 模型=deepseek-flash · Key 长度=35 · 复核=fallback",
+      "error": null,
+      "repro": "#aiBtn → 检查 #setAiEndpoint/#setAiModel/#setAiKey/#setAiVerifyMode",
+      "evidence": []
+    },
+    {
+      "id": "M16",
+      "title": "双轨切换：点「轨道①」→ 徽标/标题/正文 class 切到后台标签页；点「轨道②」切回",
+      "status": "pass",
+      "durationMs": 1030,
+      "detail": "轨道① 徽标=双轨版 · 轨道① · 后台标签页 · 轨道② 徽标=双轨版 · 轨道② · 前台窗口+AI复核",
+      "error": null,
+      "repro": "点击 .trackOpt[data-track=track1/track2]，检查 #trackBadge/#trackMeta/body.class",
+      "evidence": []
+    },
+    {
+      "id": "M17",
+      "title": "下架/恢复：100230282311 下架后从默认表隐藏、统计「已下架 1 行」、筛选已下架可见并可恢复",
+      "status": "pass",
+      "durationMs": 2347,
+      "detail": "下架 toast=已移入下架库：100230282311（下次巡检不会出现，可在「已下架」里恢复） · 已下架1行 · 恢复 toast=已恢复：100230282311 · 状态已清空",
+      "error": null,
+      "repro": "搜索 100230282311 → 操作列「下架」→ 状态筛选「已下架」→「恢复」",
+      "evidence": []
+    },
+    {
+      "id": "M18",
+      "title": "导出 CSV 与导出 JSON：真实下载落盘；CSV 表头/153 行/含手动改价；JSON 含 captures/settings/rows",
+      "status": "pass",
+      "durationMs": 1658,
+      "detail": "CSV=14.9KB/154 行 · JSON=41.6KB captures=2 rows=153",
+      "error": null,
+      "repro": "#exportBtn / #exportJsonBtn（浏览器下载行为已设到临时目录，监听 Browser.downloadProgress）",
+      "evidence": []
+    },
+    {
+      "id": "M19",
+      "title": "清空采集：confirm 文案正确、清空前自动下载 JSON 备份、清空后采集数与「手动改价」统计归零",
+      "status": "pass",
+      "durationMs": 1339,
+      "detail": "confirm ✓ · 自动备份 41.6KB（captures=2）· 清空后 captures=0",
+      "error": null,
+      "repro": "#purgeBtn → confirm 接受 → 检查自动备份下载 + state.db.captures",
+      "evidence": []
+    },
+    {
+      "id": "M20",
+      "title": "导入数据：用 M18 导出的 JSON 通过 DOM.setFileInputFiles 回导，confirm 后 2 个 SKU 采集记录与手动改价恢复",
+      "status": "pass",
+      "durationMs": 1494,
+      "detail": "toast=已导入巡检数据：2 个 SKU · captures=2 · 手动改价2 · 价格 ¥4,000 改 手动 · 11-10 12:39 低 ¥99",
+      "error": null,
+      "repro": "#importDataBtn → DOM.setFileInputFiles(#importDataFile, 导出的JSON) → confirm 接受",
+      "evidence": []
+    },
+    {
+      "id": "M21",
+      "title": "导入数据负例：导入非法 JSON 时 alert 明确报错且现有采集数据不受影响",
+      "status": "pass",
+      "durationMs": 562,
+      "detail": "alert=JSON 解析失败：Expected property name or '}' in JSON at position 2 (line 1 column 3) · captures 仍为 2",
+      "error": null,
+      "repro": "构造非法 json → #importDataBtn → 导入 → 自动接受 alert",
+      "evidence": []
+    },
+    {
+      "id": "M22",
+      "title": "总览复检（普惠已采集 2/146、手动改价 2、低于阈值 1）→ 手动改价筛选 2 行 → 汇总选中 → 导出待上报 Excel（xlsx 落盘）→ 清空待上报",
+      "status": "pass",
+      "durationMs": 3594,
+      "detail": "卡片复检 ✓ · 手动改价 2 行 · 待上报 1 条 · xlsx=4.9KB · 已清空待上报",
+      "error": null,
+      "repro": "总览 → 手动改价卡 → 勾选行 → #ovSummaryBtn → #ovExportReportBtn → #ovClearReportBtn",
+      "evidence": []
+    },
+    {
+      "id": "M23",
+      "title": "「普惠号巡检」确认弹窗：展示 SKU 数与采集方式，取消后不进入运行态（不发起真实外部采集）",
+      "status": "pass",
+      "durationMs": 1084,
+      "detail": "confirm=开始【普惠账号】巡检 本次 SKU：5 个 预计耗时：约 1 分钟 采集方式：前台小窗逐个打开商品页读取价格（每单约 10–20 秒，采集期间不要用电脑） 请先确认：当前 Edge 登录的是【普通/普惠】账号，并且能正常打开电商平台商品页。 确 · 取消后 running=false · 未打开电商平台页",
+      "error": null,
+      "repro": "点击 #runUtilBtn，Page.javascriptDialogOpening 时选择「取消」",
+      "evidence": []
+    },
+    {
+      "id": "M24",
+      "title": "多供应商 API 账号区：桥状态 chip、账号行、刷新、新增供应商行、空保存提示（不写入真实凭据）",
+      "status": "pass",
+      "durationMs": 2690,
+      "detail": "chip=官方API 已连接 · 2 个账号 · 初始账号行=2 · 新增后=3 · 空保存 toast=新增供应商账号需要填完整的账号名 / appKey / appSecret / accessToken",
+      "error": null,
+      "repro": "设置弹窗 → API 账号区 #apiRefreshBtn/#apiAddBtn/最后一行「保存」",
+      "evidence": []
+    },
+    {
+      "id": "M25",
+      "title": "API 桥未连接分支：把官方API地址改为不可达端口后，账号区显示「API 桥未连接」且应用不崩（浏览器网络日志已归类）",
+      "status": "pass",
+      "durationMs": 4099,
+      "detail": "未连接提示=API 桥未连接：Failed to fetch（确认“启动API桥.py”在运行） · 页面无脚本错误框 · 已恢复地址=http://127.0.0.1:18765",
+      "error": null,
+      "repro": "#settingsBtn → 官方API地址改 http://127.0.0.1:18799 → 保存 → 重开设置看账号区提示",
+      "evidence": []
+    },
+    {
+      "id": "M26",
+      "title": "基表自动升级：从平台首页写入旧 generatedAt 基表(2026-11-09T20:25:06+08:00) + 下架/改价状态 → 进巡检页提示「内置基表已更新」、153 行、状态保留",
+      "status": "pass",
+      "durationMs": 4992,
+      "detail": "toast=内置基表已更新（11-10 10:19），已下架 / 手动改价状态已保留 · from=2026-11-09T20:25:06+08:00 → to=2026-11-10T10:19:24+08:00 · 153 行 · captures=1 · 已下架1/手动改价1 · 已下架行=100230282311",
+      "error": null,
+      "repro": "平台首页写 chrome.storage.local：patrol.base.v1=旧基表 + patrol.db.v2 带 captures/offlineRows → 打开 modules/patrol/app.html → 读 #toast/state/storage",
+      "evidence": []
+    },
+    {
+      "id": "M27",
+      "title": "「帮助」弹窗：使用说明条目完整（≥15 条）并可关闭",
+      "status": "pass",
+      "durationMs": 157,
+      "detail": "标题=使用说明 · 17 条 · 关闭 ✓",
+      "error": null,
+      "repro": "#helpBtn → 检查 #helpDialog → #helpClose",
+      "evidence": []
+    },
+    {
+      "id": "M28",
+      "title": "管理基表：新增一行→保存修改 154 行生效（当前使用=手动管理）→ 恢复内置回 153 行",
+      "status": "pass",
+      "durationMs": 2695,
+      "detail": "新增行 36→37 · 保存 toast=基表已保存：4 个类目 · 154 行 · 146 行有 SKU（已保存到本机） · 恢复内置 153 行",
+      "error": null,
+      "repro": "#manageBaseBtn → #baseAddRowBtn → #baseSaveBtn → #baseCloseBtn → #resetBaseBtn",
+      "evidence": []
+    },
+    {
+      "id": "M29",
+      "title": "行预览「👁」悬停：创建商品页预览小窗（chrome.windows.create），随后关闭",
+      "status": "pass",
+      "durationMs": 0,
+      "detail": "预览窗口 target=https://item.shop.example.com/100307302352.html",
+      "error": null,
+      "repro": "对 #tblBody 首行 .eyeBtn 派发 mouseenter，等待 previewDelayMs=800ms",
+      "evidence": []
+    },
+    {
+      "id": "M30",
+      "title": "巡检关键页截图：工作台（含容器/统计）、双轨运行条、总览、设置",
+      "status": "pass",
+      "durationMs": 4043,
+      "detail": "10-patrol-workbench / 11-patrol-settings-ai / 12-patrol-overview / 13-patrol-base-upgrade / 14-patrol-compare / 15-patrol-settings",
+      "error": null,
+      "repro": "巡检各 tab 截图",
+      "evidence": []
+    },
+    {
+      "id": "M31",
+      "title": "巡检全程 console 零真实 error、无未捕获异常（预期的网络日志已归类并在报告说明）",
+      "status": "pass",
+      "durationMs": 0,
+      "detail": "真实 error 0；归类预期网络日志 1 条 · 未捕获异常 0 · console 条目 0",
+      "error": null,
+      "repro": "全流程结束后汇总 page.consoleErrors / pageExceptions",
+      "evidence": []
+    }
+  ],
+  "console": {
+    "real": [],
+    "expected": [
+      {
+        "error": "[log.error] Failed to load resource: net::ERR_CONNECTION_REFUSED",
+        "url": "http://127.0.0.1:18799/api/accounts",
+        "note": "API 桥未连接分支：页面按设计去探测了不可达地址，Chromium 自身打印 net::ERR_CONNECTION_REFUSED；应用已 catch 并显示「API 桥未连接」，非 JS 未捕获错误。"
+      }
+    ]
+  },
+  "dialogs": [
+    {
+      "type": "confirm",
+      "message": "导入基表：SKU巡检表-基表备份-20261110.json\n\n类目：4 个\n行数：153 行（其中 146 行有 SKU）\n与当前基表对比：与当前基表完全一致（没有变化）\n已按 SKU 去重，重复 SKU 保留最后一条数据。\n\n会覆盖当前使用的基表（已采集的价格按 SKU 保留）。确定导入？",
+      "accept": true,
+      "at": "2026-11-10T04:39:13.663Z"
+    },
+    {
+      "type": "alert",
+      "message": "基表已导入，但与当前基表完全一致：没有阈值 / 价格 / SKU 变化。\n\n如果你刚在 Excel 里改过阈值，请确认已经保存（Ctrl+S）后再导入；\n如果只改了「当前价格」列，插件不会把它当成阈值（当前价只来自采集）。",
+      "accept": true,
+      "at": "2026-11-10T04:39:13.955Z"
+    },
+    {
+      "type": "confirm",
+      "message": "导入基表：SKU巡检表.xlsx\n\n类目：4 个\n行数：154 行（其中 146 行有 SKU）\n与当前基表对比：会员阈值 1 处、型号 1 处\n已按 SKU 去重，重复 SKU 保留最后一条数据。\n\n会覆盖当前使用的基表（已采集的价格按 SKU 保留）。确定导入？",
+      "accept": true,
+      "at": "2026-11-10T04:39:14.593Z"
+    },
+    {
+      "type": "alert",
+      "message": "基表已导入并生效。\n\n会员阈值 1 处、型号 1 处\n\n变化明细：\n· 100326999922（会员阈值）：13959 → 12439\n· 100326999922（型号）：SH86CAB+MT81 → SH86CAB(MT81A)\n· 100326999922（套餐）：空 → SH86双系统单机",
+      "accept": true,
+      "at": "2026-11-10T04:39:14.895Z"
+    },
+    {
+      "type": "confirm",
+      "message": "恢复为扩展内置的基表？导入的基表会被丢弃（已采集的价格保留）。",
+      "accept": true,
+      "at": "2026-11-10T04:39:15.347Z"
+    },
+    {
+      "type": "confirm",
+      "message": "清空所有已采集的价格？\n\n只清采集结果，不影响基表和补录的 SKU。\n清空前会自动下载一份 JSON 备份到「下载」文件夹，需要时可「导入数据」恢复。",
+      "accept": true,
+      "at": "2026-11-10T04:39:25.472Z"
+    },
+    {
+      "type": "confirm",
+      "message": "导入巡检数据：2 个 SKU 的采集记录？\n\n会与当前数据合并（同一 SKU 以导入的为准），并恢复手动改价和待上报区。",
+      "accept": true,
+      "at": "2026-11-10T04:39:27.278Z"
+    },
+    {
+      "type": "alert",
+      "message": "JSON 解析失败：Expected property name or '}' in JSON at position 2 (line 1 column 3)",
+      "accept": true,
+      "at": "2026-11-10T04:39:28.758Z"
+    },
+    {
+      "type": "confirm",
+      "message": "清空待上报区（不会删除采集数据）？",
+      "accept": true,
+      "at": "2026-11-10T04:39:31.780Z"
+    },
+    {
+      "type": "confirm",
+      "message": "开始【普惠账号】巡检\n\n本次 SKU：5 个\n预计耗时：约 1 分钟\n采集方式：前台小窗逐个打开商品页读取价格（每单约 10–20 秒，采集期间不要用电脑）\n\n请先确认：当前 Edge 登录的是【普通/普惠】账号，并且能正常打开电商平台商品页。\n\n确定开始？",
+      "accept": false,
+      "at": "2026-11-10T04:39:32.895Z"
+    },
+    {
+      "type": "confirm",
+      "message": "恢复为扩展内置的基表？导入的基表会被丢弃（已采集的价格保留）。",
+      "accept": true,
+      "at": "2026-11-10T04:39:47.589Z"
+    }
+  ],
+  "downloads": [
+    {
+      "suggested": "qa-download-probe.txt",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\qa-download-probe.txt",
+      "size": 17
+    },
+    {
+      "suggested": "同品比价-20261110.csv",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\同品比价-20261110.csv",
+      "size": 2815
+    },
+    {
+      "suggested": "SKU巡检表-基表备份-20261110.json",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\SKU巡检表-基表备份-20261110.json",
+      "size": 63367
+    },
+    {
+      "suggested": "SKU巡检表-巡检结果-20261110.csv",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\SKU巡检表-巡检结果-20261110.csv",
+      "size": 15240
+    },
+    {
+      "suggested": "SKU巡检表-巡检数据-20261110.json",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\SKU巡检表-巡检数据-20261110.json",
+      "size": 42630
+    },
+    {
+      "suggested": "SKU巡检表-巡检数据-20261110.json",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\SKU巡检表-巡检数据-20261110.json",
+      "size": 42630
+    },
+    {
+      "suggested": "SKU巡检表-待上报-20261110.xlsx",
+      "state": "completed",
+      "filePath": "~\\AppData\\Local\\Temp\\deep-patrol-dl-fQsJjI\\SKU巡检表-待上报-20261110.xlsx",
+      "size": 5018
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "03-platform-deeplink-patrol.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\03-platform-deeplink-patrol.png",
+      "note": "深链 #/patrol 冷启动 + 刷新后"
+    },
+    {
+      "name": "04-platform-independent-tab.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\04-platform-independent-tab.png",
+      "note": "平台「独立打开」新标签页（巡检模块页）"
+    },
+    {
+      "name": "05-platform-history-back.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\05-platform-history-back.png",
+      "note": "浏览器后退：回到业务选择首页"
+    },
+    {
+      "name": "01-platform-home.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\01-platform-home.png",
+      "note": "业务选择首页（三业务卡片）"
+    },
+    {
+      "name": "02-platform-patrol.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\02-platform-patrol.png",
+      "note": "平台壳内嵌价格巡检"
+    },
+    {
+      "name": "11-patrol-settings-ai.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\11-patrol-settings-ai.png",
+      "note": "巡检设置弹窗（AI 已预配置 + 官方API账号区）"
+    },
+    {
+      "name": "12-patrol-overview.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\12-patrol-overview.png",
+      "note": "总览页（12 数字卡片 + 待上报区/筛选）"
+    },
+    {
+      "name": "13-patrol-base-upgrade.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\13-patrol-base-upgrade.png",
+      "note": "基表自动升级提示（内置基表已更新）+ 状态保留"
+    },
+    {
+      "name": "10-patrol-workbench.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\10-patrol-workbench.png",
+      "note": "巡检工作台（表格/统计/工具栏/运行条）"
+    },
+    {
+      "name": "14-patrol-compare.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\14-patrol-compare.png",
+      "note": "同品比价页"
+    },
+    {
+      "name": "15-patrol-settings.png",
+      "path": "~/Desktop/三合一\\价格监控平台\\qa\\shots-deep-patrol\\15-patrol-settings.png",
+      "note": "巡检设置弹窗"
+    }
+  ],
+  "notes": [
+    "真实电商平台采集未执行：真实采集需要登录普惠/PLUS 电商平台账号并会逐个打开真实商品页，属外部依赖与业务动作；本次只验证运行入口确认弹窗的取消路径（M23）与采集相关设置/轨道 UI，不发起外部采集、不写入任何电商平台账号。",
+    "同品比价使用内置基表的真实数据（15 组 / 30 SKU）；通过两行手动改价造出 1 组 ¥500 差异，验证「只看有差异」与导出比价 CSV。",
+    "基表自动升级测试从「平台首页」写入 chrome.storage.local：若在巡检页内直接写 patrol.base.v1，页面自身的 storage.onChanged 监听会先就地升级并把旧内存库写回，属于测试姿势问题；从首页写入后进巡检页，才是「扩展更新后首次打开」的真实升级路径。",
+    "导入用 SKU巡检表.xlsx 比内置基表多 1 行（154 vs 153，SKU 数同为 146）；导入差异提示正确列出 1 处会员阈值 + 型号/套餐变化，说明「自动升级+差异提示」链路有效。",
+    "预览小眼睛在 headless 下也能真实创建 chrome.windows.create 预览窗口（target=item.shop.example.com），已随测试关闭；未点击「测试 AI」，避免发起外部 AI 请求。"
+  ],
+  "findings": [
+    {
+      "title": "任务清单中的「表格排序 / 分页 / SKU 抽屉」在巡检 v1.3.4 中不存在（需求范围差异，非回归 bug）",
+      "detail": "任务描述要求覆盖「表格排序/分页」「行详情（SKU 抽屉）」，但巡检 v1.3.4 的产品 UI 与源码都没有这些交互：\n- app.html 表头（15 列）没有任何排序控件 / aria-sort / data-sort；app.js 里只有同品比价分组排序（compareEntries）与对象键排序，没有表格排序逻辑；\n- 没有分页器组件，工作台一次渲染全部 153 行（同品比价最多渲染 400 组并提示导出查看）；\n- 没有 SKU 侧边抽屉，行详情能力由 SKU 链接、「改」手动改价、「重采」、「下架/恢复」、👁 预览入口承担。\n本次已把这三项记为 SKIP（不计通过、不作为失败），并实际覆盖了替代交互（手动改价/重采弹窗/下架恢复/预览）。请 Lead 确认是否属于需求遗漏。",
+      "repro": "打开 modules/patrol/app.html：document.querySelectorAll('.tbl th[data-sort], th[aria-sort]').length === 0；无 pager 节点；表格一次渲染 153 行。"
+    },
+    {
+      "title": "「API 桥未启动」时浏览器控制台会产生 1 条 net::ERR_CONNECTION_REFUSED 网络日志（浏览器级，非 JS 异常）",
+      "detail": "M25 把「官方API地址」指向不可达端口，页面按设计去 fetch 探测：loadApiAccountInfo() 的失败被 catch，界面正确显示「API 桥未连接：Failed to fetch（确认“启动API桥.py”在运行）」，页面无脚本错误框、无未捕获异常。\n唯一新增 console error 是 Chromium 对失败请求打印的 `Failed to load resource: net::ERR_CONNECTION_REFUSED`（Log.entryAdded，url=http://127.0.0.1:18799/api/accounts），这条日志由浏览器产生、页面 JS 无法抑制。本次已单独归类并在报告说明，不计为产品 bug；若验收要求控制台绝对零 error，需要接受该网络日志或改为非 fetch 探测方案（例如由 background 通过 chrome.runtime 消息探测）。",
+      "repro": "设置 → 官方API地址改为 http://127.0.0.1:18799 → 保存 → 重开设置；控制台出现 1 条 net::ERR_CONNECTION_REFUSED（URL 可在 DevTools Network/Console 看到）。"
+    }
+  ]
+}
